@@ -15,8 +15,10 @@ type Library struct {
 
 // Group represents a logical grouping of symbols.
 type Group struct {
-	Name    string   `json:"name"`
-	Symbols []string `json:"symbols"`
+	Name      string   `json:"name"`
+	Symbols   []string `json:"symbols"`
+	Interface string   `json:"interface"`
+	Package   string   `json:"package"`
 }
 
 // Symbol represents a single C function to bind.
@@ -24,4 +26,6 @@ type Symbol struct {
 	Name      string `json:"name"`
 	Library   string `json:"library"`
 	Signature string `json:"signature"`
+	Optional  bool   `json:"optional,omitempty"`
+	Group     string `json:"group"`
 }
