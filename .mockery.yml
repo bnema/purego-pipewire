@@ -15,3 +15,7 @@ packages:
       CAPI:
       InitAPI:
       LoopAPI:
+  github.com/bnema/purego-pipewire/pipewire:
+    interfaces:
+      Runtime:
+      MainLoop:
