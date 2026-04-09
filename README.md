@@ -38,3 +38,9 @@ The sync script is currently a placeholder for the planned header-import workflo
 
 - Go 1.26.1+
 - Linux with PipeWire 0.3 runtime libraries
+
+## Integration tests
+
+Run integration tests (requires PipeWire runtime):
+
+    go test -tags integration ./integration ./pipewire -v

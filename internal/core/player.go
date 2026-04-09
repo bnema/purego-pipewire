@@ -1,0 +1,254 @@
+package core
+
+import (
+	"errors"
+	"sync"
+	"sync/atomic"
+)
+
+var (
+	ErrInvalidPlayerState = errors.New("invalid player state transition")
+	ErrPlayerClosed       = errors.New("player is closed")
+)
+
+// player is the internal player shell with state machine
+type player struct {
+	config    playerConfig
+	callbacks playerCallbacks
+	state     atomic.Int32
+	paused    atomic.Bool
+	mu        sync.Mutex
+}
+
+// newPlayer creates a new player instance
+func newPlayer(config PlayerConfig, callbacks PlayerCallbacks) *player {
+	p := &player{
+		config:    config,
+		callbacks: callbacks,
+	}
+	p.state.Store(int32(PlayerStateIdle))
+	return p
+}
+
+// State returns the current player state
+func (p *player) State() PlayerState {
+	return PlayerState(p.state.Load())
+}
+
+// setState atomically sets the player state
+func (p *player) setState(next PlayerState) {
+	p.state.Store(int32(next))
+}
+
+// transition attempts to transition to the next state
+func (p *player) transition(next PlayerState) error {
+	p.mu.Lock()
+
+	current := p.State()
+
+	// Validate transition
+	if !isValidTransition(current, next) {
+		p.mu.Unlock()
+		return ErrInvalidPlayerState
+	}
+
+	// Perform transition
+	p.setState(next)
+
+	// Capture callback under lock
+	cb := p.callbacks.OnStateChange
+
+	p.mu.Unlock()
+
+	// Invoke callback after releasing lock to avoid deadlock on reentry
+	if cb != nil {
+		cb(next)
+	}
+
+	return nil
+}
+
+// isValidTransition checks if a state transition is valid
+func isValidTransition(current, next PlayerState) bool {
+	switch current {
+	case PlayerStateIdle:
+		return next == PlayerStateStarting || next == PlayerStateClosing
+	case PlayerStateStarting:
+		return next == PlayerStatePlaying || next == PlayerStateError
+	case PlayerStatePlaying:
+		return next == PlayerStatePaused || next == PlayerStateStopped || next == PlayerStateClosing || next == PlayerStateError
+	case PlayerStatePaused:
+		return next == PlayerStatePlaying || next == PlayerStateStopped || next == PlayerStateClosing || next == PlayerStateError
+	case PlayerStateStopped:
+		return next == PlayerStateStarting || next == PlayerStateClosing
+	case PlayerStateClosing:
+		return next == PlayerStateClosed
+	case PlayerStateClosed:
+		return false // Terminal state
+	case PlayerStateError:
+		return next == PlayerStateClosing
+	default:
+		return false
+	}
+}
+
+// Start begins playback, transitioning from Idle or Stopped to Playing
+func (p *player) Start() error {
+	// Check if player is in terminal state
+	current := p.State()
+	if current == PlayerStateClosed || current == PlayerStateClosing {
+		return ErrPlayerClosed
+	}
+
+	// Only valid from Idle or Stopped
+	if current != PlayerStateIdle && current != PlayerStateStopped {
+		return ErrInvalidPlayerState
+	}
+
+	// Ensure runtime is available (placeholder)
+	if err := p.ensureRuntime(); err != nil {
+		return err
+	}
+
+	// Transition to Starting then Playing
+	if err := p.transition(PlayerStateStarting); err != nil {
+		return err
+	}
+
+	// Clear paused flag
+	p.setPaused(false)
+
+	// Transition to Playing
+	return p.transition(PlayerStatePlaying)
+}
+
+// Pause temporarily pauses playback
+func (p *player) Pause() error {
+	current := p.State()
+	if current == PlayerStateClosed || current == PlayerStateClosing {
+		return ErrPlayerClosed
+	}
+
+	// Only valid from Playing
+	if current != PlayerStatePlaying {
+		return ErrInvalidPlayerState
+	}
+
+	p.setPaused(true)
+	return p.transition(PlayerStatePaused)
+}
+
+// Stop stops playback but allows restart.
+func (p *player) Stop() error {
+	current := p.State()
+	if current == PlayerStateClosed || current == PlayerStateClosing {
+		return ErrPlayerClosed
+	}
+
+	// Valid from Playing or Paused.
+	if current != PlayerStatePlaying && current != PlayerStatePaused {
+		return ErrInvalidPlayerState
+	}
+
+	// Clear paused flag
+	p.setPaused(false)
+
+	// Deactivate stream (placeholder)
+	p.deactivateStream()
+
+	return p.transition(PlayerStateStopped)
+}
+
+// Close permanently shuts down the player
+func (p *player) Close() error {
+	current := p.State()
+
+	// Idempotent on already closed
+	if current == PlayerStateClosed {
+		return nil
+	}
+
+	// Transition to Closing if not already there
+	if current != PlayerStateClosing {
+		if err := p.transition(PlayerStateClosing); err != nil {
+			return err
+		}
+	}
+
+	// Teardown resources (placeholder)
+	p.teardown()
+
+	// Transition to Closed
+	return p.transition(PlayerStateClosed)
+}
+
+// ensureRuntime ensures the runtime is available (placeholder)
+func (p *player) ensureRuntime() error {
+	// Minimal placeholder - will be implemented in future tasks
+	return nil
+}
+
+// setPaused sets the paused flag
+func (p *player) setPaused(paused bool) {
+	p.paused.Store(paused)
+}
+
+// deactivateStream deactivates the stream (placeholder)
+func (p *player) deactivateStream() {
+	// Minimal placeholder - will be implemented in future tasks
+}
+
+// teardown performs cleanup (placeholder)
+func (p *player) teardown() {
+	// Minimal placeholder - will be implemented in future tasks
+}
+
+// Player is the exported wrapper for the internal player
+type Player struct {
+	p *player
+}
+
+// NewPlayer creates a new exported Player instance
+func NewPlayer(config playerConfig, callbacks playerCallbacks) *Player {
+	return &Player{p: newPlayer(config, callbacks)}
+}
+
+// State returns the current player state
+func (p *Player) State() PlayerState {
+	if p.p == nil {
+		return PlayerStateIdle
+	}
+	return p.p.State()
+}
+
+// Start begins playback
+func (p *Player) Start() error {
+	if p.p == nil {
+		return ErrPlayerClosed
+	}
+	return p.p.Start()
+}
+
+// Pause temporarily pauses playback
+func (p *Player) Pause() error {
+	if p.p == nil {
+		return ErrPlayerClosed
+	}
+	return p.p.Pause()
+}
+
+// Stop stops playback but allows restart
+func (p *Player) Stop() error {
+	if p.p == nil {
+		return ErrPlayerClosed
+	}
+	return p.p.Stop()
+}
+
+// Close permanently shuts down the player
+func (p *Player) Close() error {
+	if p.p == nil {
+		return nil
+	}
+	return p.p.Close()
+}

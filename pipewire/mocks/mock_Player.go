@@ -5,8 +5,6 @@
 package mocks
 
 import (
-	"context"
-
 	"github.com/bnema/purego-pipewire/pipewire"
 	mock "github.com/stretchr/testify/mock"
 )
@@ -82,70 +80,178 @@ func (_c *MockPlayer_Close_Call) RunAndReturn(run func() error) *MockPlayer_Clos
 	return _c
 }
 
-// NewStream provides a mock function for the type MockPlayer
-func (_mock *MockPlayer) NewStream(ctx context.Context, format pipewire.AudioFormat) (pipewire.PlaybackStream, error) {
-	ret := _mock.Called(ctx, format)
+// Pause provides a mock function for the type MockPlayer
+func (_mock *MockPlayer) Pause() error {
+	ret := _mock.Called()
 
 	if len(ret) == 0 {
-		panic("no return value specified for NewStream")
+		panic("no return value specified for Pause")
 	}
 
-	var r0 pipewire.PlaybackStream
-	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, pipewire.AudioFormat) (pipewire.PlaybackStream, error)); ok {
-		return returnFunc(ctx, format)
-	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, pipewire.AudioFormat) pipewire.PlaybackStream); ok {
-		r0 = returnFunc(ctx, format)
+	var r0 error
+	if returnFunc, ok := ret.Get(0).(func() error); ok {
+		r0 = returnFunc()
 	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(pipewire.PlaybackStream)
-		}
+		r0 = ret.Error(0)
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, pipewire.AudioFormat) error); ok {
-		r1 = returnFunc(ctx, format)
-	} else {
-		r1 = ret.Error(1)
-	}
-	return r0, r1
+	return r0
 }
 
-// MockPlayer_NewStream_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'NewStream'
-type MockPlayer_NewStream_Call struct {
+// MockPlayer_Pause_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Pause'
+type MockPlayer_Pause_Call struct {
 	*mock.Call
 }
 
-// NewStream is a helper method to define mock.On call
-//   - ctx context.Context
-//   - format pipewire.AudioFormat
-func (_e *MockPlayer_Expecter) NewStream(ctx interface{}, format interface{}) *MockPlayer_NewStream_Call {
-	return &MockPlayer_NewStream_Call{Call: _e.mock.On("NewStream", ctx, format)}
+// Pause is a helper method to define mock.On call
+func (_e *MockPlayer_Expecter) Pause() *MockPlayer_Pause_Call {
+	return &MockPlayer_Pause_Call{Call: _e.mock.On("Pause")}
 }
 
-func (_c *MockPlayer_NewStream_Call) Run(run func(ctx context.Context, format pipewire.AudioFormat)) *MockPlayer_NewStream_Call {
+func (_c *MockPlayer_Pause_Call) Run(run func()) *MockPlayer_Pause_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		var arg0 context.Context
-		if args[0] != nil {
-			arg0 = args[0].(context.Context)
-		}
-		var arg1 pipewire.AudioFormat
-		if args[1] != nil {
-			arg1 = args[1].(pipewire.AudioFormat)
-		}
-		run(
-			arg0,
-			arg1,
-		)
+		run()
 	})
 	return _c
 }
 
-func (_c *MockPlayer_NewStream_Call) Return(playbackStream pipewire.PlaybackStream, err error) *MockPlayer_NewStream_Call {
-	_c.Call.Return(playbackStream, err)
+func (_c *MockPlayer_Pause_Call) Return(err error) *MockPlayer_Pause_Call {
+	_c.Call.Return(err)
 	return _c
 }
 
-func (_c *MockPlayer_NewStream_Call) RunAndReturn(run func(ctx context.Context, format pipewire.AudioFormat) (pipewire.PlaybackStream, error)) *MockPlayer_NewStream_Call {
+func (_c *MockPlayer_Pause_Call) RunAndReturn(run func() error) *MockPlayer_Pause_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// Start provides a mock function for the type MockPlayer
+func (_mock *MockPlayer) Start() error {
+	ret := _mock.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for Start")
+	}
+
+	var r0 error
+	if returnFunc, ok := ret.Get(0).(func() error); ok {
+		r0 = returnFunc()
+	} else {
+		r0 = ret.Error(0)
+	}
+	return r0
+}
+
+// MockPlayer_Start_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Start'
+type MockPlayer_Start_Call struct {
+	*mock.Call
+}
+
+// Start is a helper method to define mock.On call
+func (_e *MockPlayer_Expecter) Start() *MockPlayer_Start_Call {
+	return &MockPlayer_Start_Call{Call: _e.mock.On("Start")}
+}
+
+func (_c *MockPlayer_Start_Call) Run(run func()) *MockPlayer_Start_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockPlayer_Start_Call) Return(err error) *MockPlayer_Start_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockPlayer_Start_Call) RunAndReturn(run func() error) *MockPlayer_Start_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// State provides a mock function for the type MockPlayer
+func (_mock *MockPlayer) State() pipewire.PlayerState {
+	ret := _mock.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for State")
+	}
+
+	var r0 pipewire.PlayerState
+	if returnFunc, ok := ret.Get(0).(func() pipewire.PlayerState); ok {
+		r0 = returnFunc()
+	} else {
+		r0 = ret.Get(0).(pipewire.PlayerState)
+	}
+	return r0
+}
+
+// MockPlayer_State_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'State'
+type MockPlayer_State_Call struct {
+	*mock.Call
+}
+
+// State is a helper method to define mock.On call
+func (_e *MockPlayer_Expecter) State() *MockPlayer_State_Call {
+	return &MockPlayer_State_Call{Call: _e.mock.On("State")}
+}
+
+func (_c *MockPlayer_State_Call) Run(run func()) *MockPlayer_State_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockPlayer_State_Call) Return(playerState pipewire.PlayerState) *MockPlayer_State_Call {
+	_c.Call.Return(playerState)
+	return _c
+}
+
+func (_c *MockPlayer_State_Call) RunAndReturn(run func() pipewire.PlayerState) *MockPlayer_State_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// Stop provides a mock function for the type MockPlayer
+func (_mock *MockPlayer) Stop() error {
+	ret := _mock.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for Stop")
+	}
+
+	var r0 error
+	if returnFunc, ok := ret.Get(0).(func() error); ok {
+		r0 = returnFunc()
+	} else {
+		r0 = ret.Error(0)
+	}
+	return r0
+}
+
+// MockPlayer_Stop_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Stop'
+type MockPlayer_Stop_Call struct {
+	*mock.Call
+}
+
+// Stop is a helper method to define mock.On call
+func (_e *MockPlayer_Expecter) Stop() *MockPlayer_Stop_Call {
+	return &MockPlayer_Stop_Call{Call: _e.mock.On("Stop")}
+}
+
+func (_c *MockPlayer_Stop_Call) Run(run func()) *MockPlayer_Stop_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockPlayer_Stop_Call) Return(err error) *MockPlayer_Stop_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockPlayer_Stop_Call) RunAndReturn(run func() error) *MockPlayer_Stop_Call {
 	_c.Call.Return(run)
 	return _c
 }
