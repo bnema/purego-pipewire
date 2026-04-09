@@ -32,6 +32,8 @@ Maintainers can refresh the model from local PipeWire and SPA headers with:
     ./scripts/sync-headers.sh
     go generate ./...
 
+The sync script is currently a placeholder for the planned header-import workflow.
+
 ## Requirements
 
 - Go 1.23+

@@ -1,4 +1,4 @@
-package pipewire
+package pipewire_test
 
 import (
 	"os"

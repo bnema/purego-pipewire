@@ -8,15 +8,18 @@ The `pipewiregen` tool generates Go bindings for PipeWire and SPA libraries from
 
     go run ./cmd/pipewiregen
 
-This reads `gen/pipewire.json` and `gen/spa.json`, then emits:
+This currently reads `gen/pipewire.json` and emits:
 - `internal/capi/*_gen.go` — raw function types and registration helpers
 - `internal/ports/out/*_gen.go` — outbound port interfaces
 
 ### Sync headers from system includes (maintainers)
 
+This workflow is planned but not implemented yet in `cmd/pipewiregen`.
+The helper script exists as a placeholder so the intended maintainer flow is documented.
+
     ./scripts/sync-headers.sh
 
-Or run directly:
+Planned direct invocation:
 
     go run ./cmd/pipewiregen --sync-headers \
         --pipewire-include /usr/include/pipewire-0.3 \
