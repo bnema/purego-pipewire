@@ -16,6 +16,9 @@ packages:
       InitAPI:
       LoopAPI:
   github.com/bnema/purego-pipewire/pipewire:
+    config:
+      all: false
+      include-auto-generated: true
     interfaces:
       Runtime:
       MainLoop:
