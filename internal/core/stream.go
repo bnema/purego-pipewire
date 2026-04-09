@@ -3,16 +3,12 @@ package core
 import (
 	"errors"
 	"unsafe"
-
-	portout "github.com/bnema/purego-pipewire/internal/ports/out"
 )
 
 var ErrStreamCreate = errors.New("failed to create stream")
 
 type Stream struct {
 	ptr     unsafe.Pointer
-	capi    portout.CAPI
-	core    *Core
 	destroy func()
 }
 

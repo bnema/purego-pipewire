@@ -3,16 +3,12 @@ package core
 import (
 	"errors"
 	"unsafe"
-
-	portout "github.com/bnema/purego-pipewire/internal/ports/out"
 )
 
 var ErrContextCreate = errors.New("failed to create context")
 
 type Context struct {
-	ptr  unsafe.Pointer
-	capi portout.CAPI
-	core *Core
+	ptr unsafe.Pointer
 }
 
 func (r *Runtime) NewContext() (*Context, error) {
