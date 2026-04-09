@@ -179,7 +179,7 @@ func NewPlayer(config PlayerConfig, callbacks PlayerCallbacks) (Player, error) {
 		},
 		Fill: func(buf *core.PCMBuffer) (int, error) {
 			if callbacks.Fill == nil {
-				return 0, nil
+				return buf.Frames, nil
 			}
 			// Reuse scratch buffer by updating its fields
 			p.scratchBuf.Frames = buf.Frames

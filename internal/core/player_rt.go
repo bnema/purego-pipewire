@@ -24,9 +24,11 @@ type PCMBuffer struct {
 
 // allocate allocates the Samples slice structure
 func (b *PCMBuffer) allocate() {
-	if b.Samples == nil {
+	if len(b.Samples) != b.Channels {
 		b.Samples = make([][]float32, b.Channels)
-		for ch := 0; ch < b.Channels; ch++ {
+	}
+	for ch := 0; ch < b.Channels; ch++ {
+		if len(b.Samples[ch]) != b.Frames {
 			b.Samples[ch] = make([]float32, b.Frames)
 		}
 	}
@@ -102,10 +104,14 @@ func (p *player) processPCM(buf *PCMBuffer) (int, error) {
 
 // fillSilence fills the buffer with silence (0.0) from startFrame to endFrame
 func (p *player) fillSilence(buf *PCMBuffer, startFrame, endFrame int) {
+	if startFrame < 0 {
+		startFrame = 0
+	}
+	if endFrame > buf.Frames {
+		endFrame = buf.Frames
+	}
 	for ch := 0; ch < buf.Channels; ch++ {
-		for frame := startFrame; frame < endFrame && frame < len(buf.Samples[ch]); frame++ {
-			buf.Samples[ch][frame] = 0.0
-		}
+		clear(buf.Samples[ch][startFrame:endFrame])
 	}
 }
 

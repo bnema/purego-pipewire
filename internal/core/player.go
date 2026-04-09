@@ -16,7 +16,6 @@ type player struct {
 	config    playerConfig
 	callbacks playerCallbacks
 	state     atomic.Int32
-	terminal  atomic.Bool
 	paused    atomic.Bool
 	mu        sync.Mutex
 }
@@ -139,15 +138,15 @@ func (p *player) Pause() error {
 	return p.transition(PlayerStatePaused)
 }
 
-// Stop stops playback but allows restart
+// Stop stops playback but allows restart.
 func (p *player) Stop() error {
 	current := p.State()
 	if current == PlayerStateClosed || current == PlayerStateClosing {
 		return ErrPlayerClosed
 	}
 
-	// Valid from Playing, Paused, or Idle
-	if current != PlayerStatePlaying && current != PlayerStatePaused && current != PlayerStateIdle {
+	// Valid from Playing or Paused.
+	if current != PlayerStatePlaying && current != PlayerStatePaused {
 		return ErrInvalidPlayerState
 	}
 

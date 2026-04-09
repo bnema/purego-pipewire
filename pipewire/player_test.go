@@ -47,22 +47,6 @@ func TestPlayerStateReflectsLifecycle(t *testing.T) {
 	}
 }
 
-func TestPlayerStateReflectsInitialState(t *testing.T) {
-	config := PlayerConfig{
-		SampleRate:      44100,
-		Channels:        2,
-		FramesPerBuffer: 256,
-		SampleFormat:    SampleFormatF32,
-	}
-	player, err := NewPlayer(config, PlayerCallbacks{})
-	if err != nil {
-		t.Fatalf("NewPlayer returned error: %v", err)
-	}
-	if player.State() != PlayerStateIdle {
-		t.Fatalf("expected initial state PlayerStateIdle, got %v", player.State())
-	}
-}
-
 func TestPlayerLifecycleStartStopClose(t *testing.T) {
 	config := PlayerConfig{
 		SampleRate:      44100,

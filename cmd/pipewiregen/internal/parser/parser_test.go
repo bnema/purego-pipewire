@@ -121,7 +121,7 @@ func TestLoadEmptyCallbackNameReturnsError(t *testing.T) {
 	if !strings.Contains(err.Error(), "validation failed") {
 		t.Fatalf("error message should contain 'validation failed', got: %v", err)
 	}
-	if !strings.Contains(err.Error(), "callback") && !strings.Contains(err.Error(), "empty name") {
+	if !strings.Contains(err.Error(), "callback") || !strings.Contains(err.Error(), "empty name") {
 		t.Fatalf("error message should mention callback empty name, got: %v", err)
 	}
 }
@@ -134,7 +134,7 @@ func TestLoadEmptyCallbackSignatureReturnsError(t *testing.T) {
 	if !strings.Contains(err.Error(), "validation failed") {
 		t.Fatalf("error message should contain 'validation failed', got: %v", err)
 	}
-	if !strings.Contains(err.Error(), "callback") && !strings.Contains(err.Error(), "empty signature") {
+	if !strings.Contains(err.Error(), "callback") || !strings.Contains(err.Error(), "empty signature") {
 		t.Fatalf("error message should mention callback empty signature, got: %v", err)
 	}
 }
@@ -147,7 +147,7 @@ func TestLoadEmptyEventStructNameReturnsError(t *testing.T) {
 	if !strings.Contains(err.Error(), "validation failed") {
 		t.Fatalf("error message should contain 'validation failed', got: %v", err)
 	}
-	if !strings.Contains(err.Error(), "event struct") && !strings.Contains(err.Error(), "empty name") {
+	if !strings.Contains(err.Error(), "event struct") || !strings.Contains(err.Error(), "empty name") {
 		t.Fatalf("error message should mention event struct empty name, got: %v", err)
 	}
 }
