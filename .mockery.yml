@@ -22,3 +22,4 @@ packages:
     interfaces:
       Runtime:
       MainLoop:
+      Player:
