@@ -1,12 +1,17 @@
 {
   "libraries": [
-    {"name": "pipewire", "soname": "libpipewire-0.3.so.0"}
+    {"name": "pipewire", "soname": "libpipewire-0.3.so.0"},
+    {"name": "spa", "soname": "libspa-0.2.so.0"}
   ],
   "groups": [
-    {"name": "init", "interface": "InitAPI", "package": "out", "symbols": ["pw_init", "pw_deinit"]}
+    {"name": "init", "interface": "InitAPI", "package": "out", "symbols": ["pw_init", "pw_deinit"]},
+    {"name": "loop", "interface": "LoopAPI", "package": "out", "symbols": ["pw_main_loop_new", "pw_main_loop_destroy", "pw_main_loop_run"]}
   ],
   "symbols": [
     {"name": "pw_init", "library": "pipewire", "group": "init", "signature": "func(argc *int32, argv ***byte)"},
-    {"name": "pw_deinit", "library": "pipewire", "group": "init", "signature": "func()"}
+    {"name": "pw_deinit", "library": "pipewire", "group": "init", "signature": "func()"},
+    {"name": "pw_main_loop_new", "library": "pipewire", "group": "loop", "signature": "func(props unsafe.Pointer) unsafe.Pointer"},
+    {"name": "pw_main_loop_destroy", "library": "pipewire", "group": "loop", "signature": "func(loop unsafe.Pointer)"},
+    {"name": "pw_main_loop_run", "library": "pipewire", "group": "loop", "signature": "func(loop unsafe.Pointer) int32"}
   ]
 }

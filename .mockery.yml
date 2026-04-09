@@ -13,3 +13,4 @@ packages:
       include-auto-generated: true
     interfaces:
       InitAPI:
+      LoopAPI:

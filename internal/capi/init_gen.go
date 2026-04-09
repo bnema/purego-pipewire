@@ -4,6 +4,7 @@ package capi
 
 import "github.com/ebitengine/purego"
 
+
 // pw_initFunc is the function type for pw_init.
 type pw_initFunc func(argc *int32, argv ***byte)
 
