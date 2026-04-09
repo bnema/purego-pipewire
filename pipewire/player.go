@@ -98,9 +98,10 @@ var ErrInvalidPlayerConfig = errors.New("invalid player config")
 
 // playerImpl wraps the internal core player
 type playerImpl struct {
-	config    PlayerConfig
-	callbacks PlayerCallbacks
-	internal  *core.Player
+	config     PlayerConfig
+	callbacks  PlayerCallbacks
+	internal   *core.Player
+	scratchBuf PCMBuffer // reusable buffer for Fill callback to avoid allocation
 }
 
 func (p *playerImpl) Start() error {
@@ -163,6 +164,12 @@ func NewPlayer(config PlayerConfig, callbacks PlayerCallbacks) (Player, error) {
 		coreUnderrunPolicy = core.UnderrunFillSilence
 	}
 
+	// Create the player implementation early so we can use its scratch buffer
+	p := &playerImpl{
+		config:    config,
+		callbacks: callbacks,
+	}
+
 	// Convert public callbacks to internal callbacks
 	coreCallbacks := core.PlayerCallbacks{
 		OnStateChange: func(state core.PlayerState) {
@@ -174,14 +181,12 @@ func NewPlayer(config PlayerConfig, callbacks PlayerCallbacks) (Player, error) {
 			if callbacks.Fill == nil {
 				return 0, nil
 			}
-			// Adapt internal PCMBuffer to public PCMBuffer
-			publicBuf := &PCMBuffer{
-				Frames:   buf.Frames,
-				Channels: buf.Channels,
-				Stride:   buf.Stride,
-				Samples:  buf.Samples,
-			}
-			return callbacks.Fill(publicBuf)
+			// Reuse scratch buffer by updating its fields
+			p.scratchBuf.Frames = buf.Frames
+			p.scratchBuf.Channels = buf.Channels
+			p.scratchBuf.Stride = buf.Stride
+			p.scratchBuf.Samples = buf.Samples
+			return callbacks.Fill(&p.scratchBuf)
 		},
 		OnUnderrun: func(frames int) {
 			if callbacks.OnUnderrun != nil {
@@ -206,11 +211,7 @@ func NewPlayer(config PlayerConfig, callbacks PlayerCallbacks) (Player, error) {
 		Channels:        config.Channels,
 		UnderrunPolicy:  coreUnderrunPolicy,
 	}
-	internalPlayer := core.NewPlayer(coreConfig, coreCallbacks)
+	p.internal = core.NewPlayer(coreConfig, coreCallbacks)
 
-	return &playerImpl{
-		config:    config,
-		callbacks: callbacks,
-		internal:  internalPlayer,
-	}, nil
+	return p, nil
 }
