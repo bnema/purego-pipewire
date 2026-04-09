@@ -112,3 +112,42 @@ func TestLoadEmptySymbolSignatureReturnsError(t *testing.T) {
 		t.Fatalf("error message should contain 'empty signature', got: %v", err)
 	}
 }
+
+func TestLoadEmptyCallbackNameReturnsError(t *testing.T) {
+	_, err := Load("testdata/empty_callback_name.json")
+	if err == nil {
+		t.Fatal("expected error for empty callback name, got nil")
+	}
+	if !strings.Contains(err.Error(), "validation failed") {
+		t.Fatalf("error message should contain 'validation failed', got: %v", err)
+	}
+	if !strings.Contains(err.Error(), "callback") && !strings.Contains(err.Error(), "empty name") {
+		t.Fatalf("error message should mention callback empty name, got: %v", err)
+	}
+}
+
+func TestLoadEmptyCallbackSignatureReturnsError(t *testing.T) {
+	_, err := Load("testdata/empty_callback_signature.json")
+	if err == nil {
+		t.Fatal("expected error for empty callback signature, got nil")
+	}
+	if !strings.Contains(err.Error(), "validation failed") {
+		t.Fatalf("error message should contain 'validation failed', got: %v", err)
+	}
+	if !strings.Contains(err.Error(), "callback") && !strings.Contains(err.Error(), "empty signature") {
+		t.Fatalf("error message should mention callback empty signature, got: %v", err)
+	}
+}
+
+func TestLoadEmptyEventStructNameReturnsError(t *testing.T) {
+	_, err := Load("testdata/empty_event_struct_name.json")
+	if err == nil {
+		t.Fatal("expected error for empty event struct name, got nil")
+	}
+	if !strings.Contains(err.Error(), "validation failed") {
+		t.Fatalf("error message should contain 'validation failed', got: %v", err)
+	}
+	if !strings.Contains(err.Error(), "event struct") && !strings.Contains(err.Error(), "empty name") {
+		t.Fatalf("error message should mention event struct empty name, got: %v", err)
+	}
+}
