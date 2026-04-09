@@ -1,0 +1,21 @@
+with-expecter: true
+dir: "{{.InterfaceDir}}/mocks"
+outpkg: mocks
+packages:
+  github.com/bnema/purego-pipewire/internal/ports/out:
+    interfaces:
+      CAPI:
+      InitAPI:
+      LoopAPI:
+      ContextAPI:
+      CoreAPI:
+      RegistryAPI:
+      StreamAPI:
+  github.com/bnema/purego-pipewire/pipewire:
+    interfaces:
+      Runtime:
+      MainLoop:
+      Context:
+      Core:
+      Registry:
+      Stream:

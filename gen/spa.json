@@ -1,0 +1,7 @@
+{
+  "libraries": [
+    {"name": "spa", "soname": "libspa-0.2.so.0"}
+  ],
+  "groups": [],
+  "symbols": []
+}
