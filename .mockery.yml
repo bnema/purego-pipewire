@@ -8,5 +8,8 @@ structname: "Mock{{.InterfaceName}}"
 
 packages:
   github.com/bnema/purego-pipewire/internal/ports/out:
+    config:
+      all: false
+      include-auto-generated: true
     interfaces:
       InitAPI:
