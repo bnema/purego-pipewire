@@ -12,5 +12,6 @@ packages:
       all: false
       include-auto-generated: true
     interfaces:
+      CAPI:
       InitAPI:
       LoopAPI:
