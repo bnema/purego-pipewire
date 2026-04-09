@@ -3,10 +3,10 @@
     {"name": "pipewire", "soname": "libpipewire-0.3.so.0"}
   ],
   "groups": [
-    {"name": "init", "symbols": ["pw_init", "pw_deinit"]}
+    {"name": "init", "interface": "InitAPI", "package": "out", "symbols": ["pw_init", "pw_deinit"]}
   ],
   "symbols": [
-    {"name": "pw_init", "library": "pipewire", "signature": "func(argc *int32, argv ***byte)"},
-    {"name": "pw_deinit", "library": "pipewire", "signature": "func()"}
+    {"name": "pw_init", "library": "pipewire", "group": "init", "signature": "func(argc *int32, argv ***byte)"},
+    {"name": "pw_deinit", "library": "pipewire", "group": "init", "signature": "func()"}
   ]
 }

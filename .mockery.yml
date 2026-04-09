@@ -1,21 +1,12 @@
-with-expecter: true
+all: false
+template: testify
+formatter: goimports
 dir: "{{.InterfaceDir}}/mocks"
-outpkg: mocks
+pkgname: mocks
+filename: "mock_{{.InterfaceName}}.go"
+structname: "Mock{{.InterfaceName}}"
+
 packages:
   github.com/bnema/purego-pipewire/internal/ports/out:
     interfaces:
-      CAPI:
       InitAPI:
-      LoopAPI:
-      ContextAPI:
-      CoreAPI:
-      RegistryAPI:
-      StreamAPI:
-  github.com/bnema/purego-pipewire/pipewire:
-    interfaces:
-      Runtime:
-      MainLoop:
-      Context:
-      Core:
-      Registry:
-      Stream:

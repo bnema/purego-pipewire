@@ -4,9 +4,6 @@ package out
 
 // InitAPI defines the outbound interface for init operations.
 type InitAPI interface {
-
-	PWInit func(argc *int32, argv ***byte)
-
-	PWDeinit func()
-
+	PWInit(argc *int32, argv ***byte)
+	PWDeinit()
 }

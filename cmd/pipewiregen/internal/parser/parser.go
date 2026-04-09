@@ -37,11 +37,16 @@ func validate(m *model.Model) error {
 		libNames[lib.Name] = true
 	}
 
-	// Validate groups
+	// Build set of valid group names
+	groupNames := make(map[string]bool)
 	for i, group := range m.Groups {
 		if group.Name == "" {
 			return fmt.Errorf("group at index %d has empty name", i)
 		}
+		if group.Interface == "" {
+			return fmt.Errorf("group %q has empty interface", group.Name)
+		}
+		groupNames[group.Name] = true
 	}
 
 	// Validate symbols
@@ -57,6 +62,12 @@ func validate(m *model.Model) error {
 		}
 		if !libNames[sym.Library] {
 			return fmt.Errorf("symbol %q references unknown library %q", sym.Name, sym.Library)
+		}
+		if sym.Group == "" {
+			return fmt.Errorf("symbol %q has empty group", sym.Name)
+		}
+		if !groupNames[sym.Group] {
+			return fmt.Errorf("symbol %q references unknown group %q", sym.Name, sym.Group)
 		}
 	}
 

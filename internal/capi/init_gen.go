@@ -4,7 +4,6 @@ package capi
 
 import "github.com/ebitengine/purego"
 
-
 // pw_initFunc is the function type for pw_init.
 type pw_initFunc func(argc *int32, argv ***byte)
 
@@ -20,15 +19,10 @@ var (
 
 )
 
-func registerInit(handle uintptr) error {
+func registerInit(handle uintptr) {
 
-	if err := purego.RegisterLibFunc(&pw_init, handle, "pw_init"); err != nil {
-		return err
-	}
+	purego.RegisterLibFunc(&pw_init, handle, "pw_init")
 
-	if err := purego.RegisterLibFunc(&pw_deinit, handle, "pw_deinit"); err != nil {
-		return err
-	}
+	purego.RegisterLibFunc(&pw_deinit, handle, "pw_deinit")
 
-	return nil
 }

@@ -3,9 +3,9 @@
     {"name": "pipewire", "soname": "libpipewire-0.3.so.0"}
   ],
   "groups": [
-    {"name": "init", "symbols": ["pw_init"]}
+    {"name": "init", "interface": "InitAPI", "package": "out", "symbols": ["pw_init"]}
   ],
   "symbols": [
-    {"name": "pw_init", "library": "pipewire", "signature": ""}
+    {"name": "pw_init", "library": "pipewire", "group": "init", "signature": ""}
   ]
 }
