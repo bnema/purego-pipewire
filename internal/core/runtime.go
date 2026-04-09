@@ -7,9 +7,8 @@ import (
 )
 
 type Runtime struct {
-	capi    portout.CAPI
-	once    sync.Once
-	initErr error
+	capi portout.CAPI
+	once sync.Once
 }
 
 func NewRuntime(capi portout.CAPI) *Runtime {
@@ -20,7 +19,7 @@ func (r *Runtime) Init() error {
 	r.once.Do(func() {
 		r.capi.PWInit(nil, nil)
 	})
-	return r.initErr
+	return nil
 }
 
 func (r *Runtime) Deinit() {
