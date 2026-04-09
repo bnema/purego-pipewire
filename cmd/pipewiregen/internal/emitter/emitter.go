@@ -50,13 +50,13 @@ func Emit(m *model.Model, root string) (map[string][]byte, error) {
 		capiPath := filepath.Join("internal", "capi", group.Name+"_gen.go")
 		portPath := filepath.Join("internal", "ports", "out", group.Name+"_gen.go")
 
-		capiContent, err := renderCAPI(group, m.Symbols, m.Libraries)
+		capiContent, err := renderCAPI(group, m.Symbols, m.Libraries, m.Callbacks, m.EventStructs)
 		if err != nil {
 			return nil, fmt.Errorf("render capi for group %q: %w", group.Name, err)
 		}
 		out[capiPath] = capiContent
 
-		portContent, err := renderPort(group, m.Symbols)
+		portContent, err := renderPort(group, m.Symbols, m.EventStructs)
 		if err != nil {
 			return nil, fmt.Errorf("render port for group %q: %w", group.Name, err)
 		}
@@ -66,7 +66,7 @@ func Emit(m *model.Model, root string) (map[string][]byte, error) {
 }
 
 // renderCAPI generates the raw C API function types and registration helpers.
-func renderCAPI(group model.Group, symbols []model.Symbol, libraries []model.Library) ([]byte, error) {
+func renderCAPI(group model.Group, symbols []model.Symbol, libraries []model.Library, callbacks []model.Callback, eventStructs []model.EventStruct) ([]byte, error) {
 	// Find symbols belonging to this group
 	groupSymbols := filterSymbolsByGroup(symbols, group.Name)
 
@@ -85,16 +85,37 @@ func renderCAPI(group model.Group, symbols []model.Symbol, libraries []model.Lib
 		}
 	}
 
+	// Filter callbacks and event structs for stream_playback group
+	var groupCallbacks []model.Callback
+	var groupEventStructs []model.EventStruct
+	if group.Name == "stream_playback" {
+		groupCallbacks = callbacks
+		groupEventStructs = eventStructs
+		// Check if callbacks need unsafe
+		for _, cb := range callbacks {
+			if strings.Contains(cb.Signature, "unsafe.Pointer") {
+				needsUnsafe = true
+				break
+			}
+		}
+	}
+
 	data := struct {
-		Group       model.Group
-		Symbols     []model.Symbol
-		LibraryMap  map[string]string
-		NeedsUnsafe bool
+		Group            model.Group
+		Symbols          []model.Symbol
+		LibraryMap       map[string]string
+		NeedsUnsafe      bool
+		Callbacks        []model.Callback
+		EventStructs     []model.EventStruct
+		IsStreamPlayback bool
 	}{
-		Group:       group,
-		Symbols:     groupSymbols,
-		LibraryMap:  libMap,
-		NeedsUnsafe: needsUnsafe,
+		Group:            group,
+		Symbols:          groupSymbols,
+		LibraryMap:       libMap,
+		NeedsUnsafe:      needsUnsafe,
+		Callbacks:        groupCallbacks,
+		EventStructs:     groupEventStructs,
+		IsStreamPlayback: group.Name == "stream_playback",
 	}
 
 	var buf bytes.Buffer
@@ -105,7 +126,7 @@ func renderCAPI(group model.Group, symbols []model.Symbol, libraries []model.Lib
 }
 
 // renderPort generates the outbound interface definitions.
-func renderPort(group model.Group, symbols []model.Symbol) ([]byte, error) {
+func renderPort(group model.Group, symbols []model.Symbol, eventStructs []model.EventStruct) ([]byte, error) {
 	groupSymbols := filterSymbolsByGroup(symbols, group.Name)
 
 	// Convert symbols to methods with proper Go names
@@ -134,14 +155,22 @@ func renderPort(group model.Group, symbols []model.Symbol) ([]byte, error) {
 		}
 	}
 
+	// Filter event structs for stream_playback group
+	var groupEventStructs []model.EventStruct
+	if group.Name == "stream_playback" {
+		groupEventStructs = eventStructs
+	}
+
 	data := struct {
-		Group       model.Group
-		Methods     []Method
-		NeedsUnsafe bool
+		Group        model.Group
+		Methods      []Method
+		NeedsUnsafe  bool
+		EventStructs []model.EventStruct
 	}{
-		Group:       group,
-		Methods:     methods,
-		NeedsUnsafe: needsUnsafe,
+		Group:        group,
+		Methods:      methods,
+		NeedsUnsafe:  needsUnsafe,
+		EventStructs: groupEventStructs,
 	}
 
 	var buf bytes.Buffer
@@ -247,6 +276,12 @@ import "unsafe"
 {{range .Symbols}}
 // {{.Name}}Func is the function type for {{.Name}}.
 type {{.Name}}Func {{.Signature}}
+{{end}}
+{{if .IsStreamPlayback}}
+{{range .Callbacks}}
+// {{.Name}} represents the callback struct for {{.Name}}.
+type {{.Name}} {{.Signature}}
+{{end}}
 {{end}}
 
 var (
