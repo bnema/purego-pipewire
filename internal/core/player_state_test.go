@@ -4,6 +4,43 @@ import (
 	"testing"
 )
 
+func TestPlayerStateCallbackFanout(t *testing.T) {
+	var callbackStates []PlayerState
+	callbacks := playerCallbacks{
+		OnStateChange: func(state PlayerState) {
+			callbackStates = append(callbackStates, state)
+		},
+	}
+
+	p := newPlayer(playerConfig{}, callbacks)
+
+	// Trigger a transition
+	if err := p.transition(PlayerStateStarting); err != nil {
+		t.Errorf("transition to Starting failed: %v", err)
+	}
+
+	// Verify callback was invoked with the new state
+	if len(callbackStates) != 1 {
+		t.Errorf("callback invoked %d times, want 1", len(callbackStates))
+	}
+	if len(callbackStates) > 0 && callbackStates[0] != PlayerStateStarting {
+		t.Errorf("callback received state %v, want %v", callbackStates[0], PlayerStateStarting)
+	}
+
+	// Trigger another transition
+	if err := p.transition(PlayerStatePlaying); err != nil {
+		t.Errorf("transition to Playing failed: %v", err)
+	}
+
+	// Verify callback was invoked again
+	if len(callbackStates) != 2 {
+		t.Errorf("callback invoked %d times, want 2", len(callbackStates))
+	}
+	if len(callbackStates) > 1 && callbackStates[1] != PlayerStatePlaying {
+		t.Errorf("callback received state %v, want %v", callbackStates[1], PlayerStatePlaying)
+	}
+}
+
 func TestPlayerStateTransitionsIdleStartStopClose(t *testing.T) {
 	p := newPlayer(playerConfig{}, playerCallbacks{})
 

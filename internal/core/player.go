@@ -15,7 +15,7 @@ type playerConfig struct {
 
 // playerCallbacks holds callbacks for player events
 type playerCallbacks struct {
-	OnStateChange func(oldState, newState PlayerState)
+	OnStateChange func(PlayerState)
 }
 
 // player is the internal player shell with state machine
@@ -50,21 +50,26 @@ func (p *player) setState(next PlayerState) {
 // transition attempts to transition to the next state
 func (p *player) transition(next PlayerState) error {
 	p.mu.Lock()
-	defer p.mu.Unlock()
 
 	current := p.State()
 
 	// Validate transition
 	if !isValidTransition(current, next) {
+		p.mu.Unlock()
 		return ErrInvalidPlayerState
 	}
 
 	// Perform transition
 	p.setState(next)
 
-	// Notify callback
-	if p.callbacks.OnStateChange != nil {
-		p.callbacks.OnStateChange(current, next)
+	// Capture callback under lock
+	cb := p.callbacks.OnStateChange
+
+	p.mu.Unlock()
+
+	// Invoke callback after releasing lock to avoid deadlock on reentry
+	if cb != nil {
+		cb(next)
 	}
 
 	return nil
