@@ -9,6 +9,6 @@ type Runtime interface {
 
 // MainLoop is the public interface for PipeWire main loop operations.
 type MainLoop interface {
-	Run()
+	Run() int32
 	Destroy()
 }

@@ -33,8 +33,8 @@ type mainLoopWrapper struct {
 	inner *core.MainLoop
 }
 
-func (mlw mainLoopWrapper) Run() {
-	mlw.inner.Run()
+func (mlw mainLoopWrapper) Run() int32 {
+	return mlw.inner.Run()
 }
 
 func (mlw mainLoopWrapper) Destroy() {

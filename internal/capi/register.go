@@ -1,6 +1,7 @@
 package capi
 
 import (
+	"sync"
 	"unsafe"
 
 	"github.com/bnema/purego-pipewire/internal/loader"
@@ -31,25 +32,27 @@ func (d defaultImpl) PWMainLoopRun(loop unsafe.Pointer) int32 {
 }
 
 var (
-	defaultAPI portout.CAPI
-	registered bool
+	defaultAPI   portout.CAPI
+	registerOnce sync.Once
+	registerErr  error
 )
 
 // Register loads the PipeWire libraries and registers all function bindings.
+// It is safe to call from multiple goroutines; the initialization will only happen once.
 func Register() error {
-	if registered {
-		return nil
-	}
-	h, err := loader.Open()
-	if err != nil {
-		return err
-	}
-	if err := registerAll(h); err != nil {
-		return err
-	}
-	defaultAPI = defaultImpl{}
-	registered = true
-	return nil
+	registerOnce.Do(func() {
+		h, err := loader.Open()
+		if err != nil {
+			registerErr = err
+			return
+		}
+		if err := registerAll(h); err != nil {
+			registerErr = err
+			return
+		}
+		defaultAPI = defaultImpl{}
+	})
+	return registerErr
 }
 
 // Default returns the default CAPI instance after Register() has been called.
