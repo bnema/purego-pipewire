@@ -22,3 +22,5 @@ packages:
     interfaces:
       Runtime:
       MainLoop:
+      Player:
+      PlaybackStream:
