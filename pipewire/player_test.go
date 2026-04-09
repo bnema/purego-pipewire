@@ -31,6 +31,22 @@ func TestNewPlayerAcceptsValidConfig(t *testing.T) {
 	}
 }
 
+func TestPlayerStateReflectsLifecycle(t *testing.T) {
+	config := PlayerConfig{
+		SampleRate:      44100,
+		Channels:        2,
+		FramesPerBuffer: 256,
+		SampleFormat:    SampleFormatF32,
+	}
+	player, err := NewPlayer(config, PlayerCallbacks{})
+	if err != nil {
+		t.Fatalf("NewPlayer returned error: %v", err)
+	}
+	if player.State() != PlayerStateIdle {
+		t.Fatalf("expected initial state PlayerStateIdle, got %v", player.State())
+	}
+}
+
 func TestPlayerStateReflectsInitialState(t *testing.T) {
 	config := PlayerConfig{
 		SampleRate:      44100,
@@ -136,5 +152,92 @@ func TestPlayerCloseIsIdempotent(t *testing.T) {
 	}
 	if player.State() != PlayerStateClosed {
 		t.Fatalf("expected Closed state after second close, got %v", player.State())
+	}
+}
+
+func TestPlayerCallbacksAreWired(t *testing.T) {
+	var stateChanges []PlayerState
+	var fillCalled bool
+	var underrunFrames int
+	var drainCalled bool
+
+	config := PlayerConfig{
+		SampleRate:      44100,
+		Channels:        2,
+		FramesPerBuffer: 256,
+		SampleFormat:    SampleFormatF32,
+		UnderrunPolicy:  UnderrunFillSilence,
+	}
+
+	callbacks := PlayerCallbacks{
+		Fill: func(buf *PCMBuffer) (int, error) {
+			fillCalled = true
+			_ = fillCalled // Suppress unused warning for now
+			return buf.Frames, nil
+		},
+		OnUnderrun: func(frames int) {
+			underrunFrames = frames
+			_ = underrunFrames // Suppress unused warning for now
+		},
+		OnDrain: func() {
+			drainCalled = true
+			_ = drainCalled // Suppress unused warning for now
+		},
+		OnStateChange: func(state PlayerState) {
+			stateChanges = append(stateChanges, state)
+		},
+	}
+
+	player, err := NewPlayer(config, callbacks)
+	if err != nil {
+		t.Fatalf("NewPlayer returned error: %v", err)
+	}
+
+	// Verify initial state
+	if player.State() != PlayerStateIdle {
+		t.Fatalf("expected PlayerStateIdle, got %v", player.State())
+	}
+
+	// Start should trigger state change callback
+	if err := player.Start(); err != nil {
+		t.Fatalf("Start failed: %v", err)
+	}
+
+	// Verify we got state change callbacks
+	if len(stateChanges) == 0 {
+		t.Fatal("expected OnStateChange callbacks, got none")
+	}
+
+	// Clean up
+	if err := player.Close(); err != nil {
+		t.Fatalf("Close failed: %v", err)
+	}
+}
+
+func TestPlayerConfigMapsToCore(t *testing.T) {
+	config := PlayerConfig{
+		SampleRate:      48000,
+		Channels:        4,
+		FramesPerBuffer: 512,
+		SampleFormat:    SampleFormatF32,
+		UnderrunPolicy:  UnderrunFail,
+	}
+
+	player, err := NewPlayer(config, PlayerCallbacks{})
+	if err != nil {
+		t.Fatalf("NewPlayer returned error: %v", err)
+	}
+	if player == nil {
+		t.Fatal("NewPlayer returned nil player")
+	}
+
+	// Player should be usable after creation
+	if player.State() != PlayerStateIdle {
+		t.Fatalf("expected PlayerStateIdle, got %v", player.State())
+	}
+
+	// Clean up
+	if err := player.Close(); err != nil {
+		t.Fatalf("Close failed: %v", err)
 	}
 }

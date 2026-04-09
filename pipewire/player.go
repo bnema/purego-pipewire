@@ -154,6 +154,15 @@ func NewPlayer(config PlayerConfig, callbacks PlayerCallbacks) (Player, error) {
 		return nil, ErrInvalidPlayerConfig
 	}
 
+	// Convert public UnderrunPolicy to internal UnderrunPolicy
+	var coreUnderrunPolicy core.UnderrunPolicy
+	switch config.UnderrunPolicy {
+	case UnderrunFail:
+		coreUnderrunPolicy = core.UnderrunFailFast
+	default:
+		coreUnderrunPolicy = core.UnderrunFillSilence
+	}
+
 	// Convert public callbacks to internal callbacks
 	coreCallbacks := core.PlayerCallbacks{
 		OnStateChange: func(state core.PlayerState) {
@@ -161,10 +170,43 @@ func NewPlayer(config PlayerConfig, callbacks PlayerCallbacks) (Player, error) {
 				callbacks.OnStateChange(PlayerState(state))
 			}
 		},
+		Fill: func(buf *core.PCMBuffer) (int, error) {
+			if callbacks.Fill == nil {
+				return 0, nil
+			}
+			// Adapt internal PCMBuffer to public PCMBuffer
+			publicBuf := &PCMBuffer{
+				Frames:   buf.Frames,
+				Channels: buf.Channels,
+				Stride:   buf.Stride,
+				Samples:  buf.Samples,
+			}
+			return callbacks.Fill(publicBuf)
+		},
+		OnUnderrun: func(frames int) {
+			if callbacks.OnUnderrun != nil {
+				callbacks.OnUnderrun(frames)
+			}
+		},
+		OnDrain: func() {
+			if callbacks.OnDrain != nil {
+				callbacks.OnDrain()
+			}
+		},
+		OnError: func(err error) {
+			if callbacks.OnError != nil {
+				callbacks.OnError(err)
+			}
+		},
 	}
 
-	// Create internal player
-	internalPlayer := core.NewPlayer(core.PlayerConfig{}, coreCallbacks)
+	// Create internal player with mapped config
+	coreConfig := core.PlayerConfig{
+		FramesPerBuffer: config.FramesPerBuffer,
+		Channels:        config.Channels,
+		UnderrunPolicy:  coreUnderrunPolicy,
+	}
+	internalPlayer := core.NewPlayer(coreConfig, coreCallbacks)
 
 	return &playerImpl{
 		config:    config,

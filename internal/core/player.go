@@ -73,7 +73,7 @@ func (p *player) transition(next PlayerState) error {
 func isValidTransition(current, next PlayerState) bool {
 	switch current {
 	case PlayerStateIdle:
-		return next == PlayerStateStarting
+		return next == PlayerStateStarting || next == PlayerStateClosing
 	case PlayerStateStarting:
 		return next == PlayerStatePlaying || next == PlayerStateError
 	case PlayerStatePlaying:
