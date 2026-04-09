@@ -71,5 +71,22 @@ func validate(m *model.Model) error {
 		}
 	}
 
+	// Validate callbacks
+	for i, cb := range m.Callbacks {
+		if cb.Name == "" {
+			return fmt.Errorf("callback at index %d has empty name", i)
+		}
+		if cb.Signature == "" {
+			return fmt.Errorf("callback %q has empty signature", cb.Name)
+		}
+	}
+
+	// Validate event structs
+	for i, es := range m.EventStructs {
+		if es.Name == "" {
+			return fmt.Errorf("event struct at index %d has empty name", i)
+		}
+	}
+
 	return nil
 }
