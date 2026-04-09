@@ -10,22 +10,20 @@ import (
 
 type Handles struct {
 	PipeWire uintptr
-	SPA      uintptr
 }
 
+// Open loads the PipeWire library with RTLD_GLOBAL so plugins can resolve symbols.
+// Falls back to system library paths unless PIPEWIRE_LIB_PATH is set.
 func Open() (Handles, error) {
-	pw, err := openOne(resolveLib("PIPEWIRE_LIB_PATH", "libpipewire-0.3.so.0"))
+	pw, err := openOne(resolveLib("PIPEWIRE_LIB_PATH", libFileName("libpipewire-0.3", "0")))
 	if err != nil {
 		return Handles{}, err
 	}
-	spa, err := openOne(resolveLib("SPA_LIB_PATH", "libspa-0.2.so.0"))
-	if err != nil {
-		return Handles{}, err
-	}
-	return Handles{PipeWire: pw, SPA: spa}, nil
+	return Handles{PipeWire: pw}, nil
 }
 
 func openOne(path string) (uintptr, error) {
+	// RTLD_GLOBAL is required: PipeWire plugins need to resolve symbols from the main library.
 	h, err := purego.Dlopen(path, purego.RTLD_NOW|purego.RTLD_GLOBAL)
 	if err != nil {
 		return 0, fmt.Errorf("dlopen %s: %w", path, err)
