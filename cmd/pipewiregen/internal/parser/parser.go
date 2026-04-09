@@ -19,7 +19,7 @@ func Load(path string) (*model.Model, error) {
 		return nil, fmt.Errorf("failed to unmarshal JSON from %s: %w", path, err)
 	}
 	if err := validate(&m); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("validation failed: %w", err)
 	}
 	return &m, nil
 }

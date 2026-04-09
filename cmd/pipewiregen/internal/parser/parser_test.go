@@ -47,3 +47,68 @@ func TestLoadSymbolWithUnknownLibraryReturnsError(t *testing.T) {
 		t.Fatalf("error message should contain 'unknown library', got: %v", err)
 	}
 }
+
+func TestLoadEmptyLibraryNameReturnsError(t *testing.T) {
+	_, err := Load("testdata/empty_lib_name.json")
+	if err == nil {
+		t.Fatal("expected error for empty library name, got nil")
+	}
+	if !strings.Contains(err.Error(), "validation failed") {
+		t.Fatalf("error message should contain 'validation failed', got: %v", err)
+	}
+	if !strings.Contains(err.Error(), "empty name") {
+		t.Fatalf("error message should contain 'empty name', got: %v", err)
+	}
+}
+
+func TestLoadEmptyLibrarySONameReturnsError(t *testing.T) {
+	_, err := Load("testdata/empty_lib_soname.json")
+	if err == nil {
+		t.Fatal("expected error for empty library soname, got nil")
+	}
+	if !strings.Contains(err.Error(), "validation failed") {
+		t.Fatalf("error message should contain 'validation failed', got: %v", err)
+	}
+	if !strings.Contains(err.Error(), "empty soname") {
+		t.Fatalf("error message should contain 'empty soname', got: %v", err)
+	}
+}
+
+func TestLoadEmptyGroupNameReturnsError(t *testing.T) {
+	_, err := Load("testdata/empty_group_name.json")
+	if err == nil {
+		t.Fatal("expected error for empty group name, got nil")
+	}
+	if !strings.Contains(err.Error(), "validation failed") {
+		t.Fatalf("error message should contain 'validation failed', got: %v", err)
+	}
+	if !strings.Contains(err.Error(), "empty name") {
+		t.Fatalf("error message should contain 'empty name', got: %v", err)
+	}
+}
+
+func TestLoadEmptySymbolNameReturnsError(t *testing.T) {
+	_, err := Load("testdata/empty_symbol_name.json")
+	if err == nil {
+		t.Fatal("expected error for empty symbol name, got nil")
+	}
+	if !strings.Contains(err.Error(), "validation failed") {
+		t.Fatalf("error message should contain 'validation failed', got: %v", err)
+	}
+	if !strings.Contains(err.Error(), "empty name") {
+		t.Fatalf("error message should contain 'empty name', got: %v", err)
+	}
+}
+
+func TestLoadEmptySymbolSignatureReturnsError(t *testing.T) {
+	_, err := Load("testdata/empty_symbol_sig.json")
+	if err == nil {
+		t.Fatal("expected error for empty symbol signature, got nil")
+	}
+	if !strings.Contains(err.Error(), "validation failed") {
+		t.Fatalf("error message should contain 'validation failed', got: %v", err)
+	}
+	if !strings.Contains(err.Error(), "empty signature") {
+		t.Fatalf("error message should contain 'empty signature', got: %v", err)
+	}
+}

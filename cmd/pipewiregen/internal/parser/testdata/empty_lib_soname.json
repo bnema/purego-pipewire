@@ -1,0 +1,7 @@
+{
+  "libraries": [
+    {"name": "pipewire", "soname": ""}
+  ],
+  "groups": [],
+  "symbols": []
+}
