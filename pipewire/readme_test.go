@@ -2,12 +2,18 @@ package pipewire_test
 
 import (
 	"os"
+	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
 
 func TestReadmeMentionsGenerateAndMockery(t *testing.T) {
-	b, err := os.ReadFile("../README.md")
+	_, file, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("runtime.Caller failed")
+	}
+	b, err := os.ReadFile(filepath.Join(filepath.Dir(file), "..", "README.md"))
 	if err != nil {
 		t.Fatalf("ReadFile returned error: %v", err)
 	}
