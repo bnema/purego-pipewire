@@ -42,7 +42,99 @@ func TestPlayerStateReflectsInitialState(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewPlayer returned error: %v", err)
 	}
-	if player.State() != Idle {
-		t.Fatalf("expected initial state Idle, got %v", player.State())
+	if player.State() != PlayerStateIdle {
+		t.Fatalf("expected initial state PlayerStateIdle, got %v", player.State())
+	}
+}
+
+func TestPlayerLifecycleStartStopClose(t *testing.T) {
+	config := PlayerConfig{
+		SampleRate:      44100,
+		Channels:        2,
+		FramesPerBuffer: 256,
+		SampleFormat:    SampleFormatF32,
+	}
+	player, err := NewPlayer(config, PlayerCallbacks{})
+	if err != nil {
+		t.Fatalf("NewPlayer returned error: %v", err)
+	}
+
+	// Start should transition to Playing
+	if err := player.Start(); err != nil {
+		t.Fatalf("Start failed: %v", err)
+	}
+	if player.State() != PlayerStatePlaying {
+		t.Fatalf("expected Playing state after Start, got %v", player.State())
+	}
+
+	// Pause should transition to Paused
+	if err := player.Pause(); err != nil {
+		t.Fatalf("Pause failed: %v", err)
+	}
+	if player.State() != PlayerStatePaused {
+		t.Fatalf("expected Paused state after Pause, got %v", player.State())
+	}
+
+	// Stop should transition to Stopped
+	if err := player.Stop(); err != nil {
+		t.Fatalf("Stop failed: %v", err)
+	}
+	if player.State() != PlayerStateStopped {
+		t.Fatalf("expected Stopped state after Stop, got %v", player.State())
+	}
+
+	// Restart should work from Stopped
+	if err := player.Start(); err != nil {
+		t.Fatalf("Start from Stopped failed: %v", err)
+	}
+	if player.State() != PlayerStatePlaying {
+		t.Fatalf("expected Playing state after restart, got %v", player.State())
+	}
+
+	// Close should transition to Closed
+	if err := player.Close(); err != nil {
+		t.Fatalf("Close failed: %v", err)
+	}
+	if player.State() != PlayerStateClosed {
+		t.Fatalf("expected Closed state after Close, got %v", player.State())
+	}
+
+	// Start from Closed should fail
+	if err := player.Start(); err == nil {
+		t.Fatal("expected error starting from Closed state, got nil")
+	}
+}
+
+func TestPlayerCloseIsIdempotent(t *testing.T) {
+	config := PlayerConfig{
+		SampleRate:      44100,
+		Channels:        2,
+		FramesPerBuffer: 256,
+		SampleFormat:    SampleFormatF32,
+	}
+	player, err := NewPlayer(config, PlayerCallbacks{})
+	if err != nil {
+		t.Fatalf("NewPlayer returned error: %v", err)
+	}
+
+	// Start first
+	if err := player.Start(); err != nil {
+		t.Fatalf("Start failed: %v", err)
+	}
+
+	// First close should work
+	if err := player.Close(); err != nil {
+		t.Fatalf("first Close failed: %v", err)
+	}
+	if player.State() != PlayerStateClosed {
+		t.Fatalf("expected Closed state, got %v", player.State())
+	}
+
+	// Second close should succeed (idempotent)
+	if err := player.Close(); err != nil {
+		t.Fatalf("second Close failed: %v", err)
+	}
+	if player.State() != PlayerStateClosed {
+		t.Fatalf("expected Closed state after second close, got %v", player.State())
 	}
 }

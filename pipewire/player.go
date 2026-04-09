@@ -2,6 +2,8 @@ package pipewire
 
 import (
 	"errors"
+
+	"github.com/bnema/purego-pipewire/internal/core"
 )
 
 // SampleFormat represents the audio sample format type.
@@ -26,22 +28,34 @@ const (
 type PlayerState int
 
 const (
-	// Idle is the initial state before the player is started.
-	Idle PlayerState = iota
-	// Starting indicates the player is initializing.
-	Starting
-	// Playing indicates the player is actively outputting audio.
-	Playing
-	// Paused indicates the player is temporarily stopped.
-	Paused
-	// Stopped indicates the player has been stopped.
-	Stopped
-	// Closing indicates the player is shutting down.
-	Closing
-	// Closed indicates the player has been fully closed.
-	Closed
-	// Error indicates the player encountered an error.
-	Error
+	// PlayerStateIdle is the initial state before the player is started.
+	PlayerStateIdle PlayerState = iota
+	// PlayerStateStarting indicates the player is initializing.
+	PlayerStateStarting
+	// PlayerStatePlaying indicates the player is actively outputting audio.
+	PlayerStatePlaying
+	// PlayerStatePaused indicates the player is temporarily stopped.
+	PlayerStatePaused
+	// PlayerStateStopped indicates the player has been stopped.
+	PlayerStateStopped
+	// PlayerStateClosing indicates the player is shutting down.
+	PlayerStateClosing
+	// PlayerStateClosed indicates the player has been fully closed.
+	PlayerStateClosed
+	// PlayerStateError indicates the player encountered an error.
+	PlayerStateError
+)
+
+// Legacy aliases for backwards compatibility (deprecated)
+const (
+	Idle     = PlayerStateIdle
+	Starting = PlayerStateStarting
+	Playing  = PlayerStatePlaying
+	Paused   = PlayerStatePaused
+	Stopped  = PlayerStateStopped
+	Closing  = PlayerStateClosing
+	Closed   = PlayerStateClosed
+	Error    = PlayerStateError
 )
 
 // PlayerConfig holds the configuration for a new audio player.
@@ -82,32 +96,46 @@ type Player interface {
 // ErrInvalidPlayerConfig is returned when the player configuration is invalid.
 var ErrInvalidPlayerConfig = errors.New("invalid player config")
 
-// playerImpl is a placeholder implementation of the Player interface.
-// Full implementation will be added in subsequent tasks.
+// playerImpl wraps the internal core player
 type playerImpl struct {
 	config    PlayerConfig
 	callbacks PlayerCallbacks
-	state     PlayerState
+	internal  *core.Player
 }
 
 func (p *playerImpl) Start() error {
-	return nil
+	if p.internal == nil {
+		return errors.New("player not initialized")
+	}
+	return p.internal.Start()
 }
 
 func (p *playerImpl) Pause() error {
-	return nil
+	if p.internal == nil {
+		return errors.New("player not initialized")
+	}
+	return p.internal.Pause()
 }
 
 func (p *playerImpl) Stop() error {
-	return nil
+	if p.internal == nil {
+		return errors.New("player not initialized")
+	}
+	return p.internal.Stop()
 }
 
 func (p *playerImpl) Close() error {
-	return nil
+	if p.internal == nil {
+		return nil
+	}
+	return p.internal.Close()
 }
 
 func (p *playerImpl) State() PlayerState {
-	return p.state
+	if p.internal == nil {
+		return PlayerStateIdle
+	}
+	return PlayerState(p.internal.State())
 }
 
 // NewPlayer creates a new audio player with the given configuration and callbacks.
@@ -126,9 +154,21 @@ func NewPlayer(config PlayerConfig, callbacks PlayerCallbacks) (Player, error) {
 		return nil, ErrInvalidPlayerConfig
 	}
 
+	// Convert public callbacks to internal callbacks
+	coreCallbacks := core.PlayerCallbacks{
+		OnStateChange: func(state core.PlayerState) {
+			if callbacks.OnStateChange != nil {
+				callbacks.OnStateChange(PlayerState(state))
+			}
+		},
+	}
+
+	// Create internal player
+	internalPlayer := core.NewPlayer(core.PlayerConfig{}, coreCallbacks)
+
 	return &playerImpl{
 		config:    config,
 		callbacks: callbacks,
-		state:     Idle,
+		internal:  internalPlayer,
 	}, nil
 }
