@@ -157,21 +157,38 @@ func testCleanupModel() *model.Model {
 // TestEmitGeneratesCleanupBindings verifies that cleanup bindings are generated.
 // This test ensures pw_main_loop_quit and pw_stream_destroy are present in generated files.
 func TestEmitGeneratesCleanupBindings(t *testing.T) {
-	// Load the actual pipewire.json from the project root
-	root, err := filepath.Abs("../../../..")
-	if err != nil {
-		t.Fatalf("failed to get project root: %v", err)
-	}
+	t.Run("unit model", func(t *testing.T) {
+		paths, err := Emit(testCleanupModel(), t.TempDir())
+		if err != nil {
+			t.Fatalf("Emit returned error: %v", err)
+		}
 
-	actualModel, err := parser.Load(filepath.Join(root, "gen", "pipewire.json"))
-	if err != nil {
-		t.Fatalf("failed to load pipewire.json: %v", err)
-	}
+		assertCleanupBindings(t, paths)
+	})
 
-	paths, err := Emit(actualModel, t.TempDir())
-	if err != nil {
-		t.Fatalf("Emit returned error: %v", err)
-	}
+	t.Run("checked in model", func(t *testing.T) {
+		// Load the actual pipewire.json from the project root
+		root, err := filepath.Abs("../../../..")
+		if err != nil {
+			t.Fatalf("failed to get project root: %v", err)
+		}
+
+		actualModel, err := parser.Load(filepath.Join(root, "gen", "pipewire.json"))
+		if err != nil {
+			t.Fatalf("failed to load pipewire.json: %v", err)
+		}
+
+		paths, err := Emit(actualModel, t.TempDir())
+		if err != nil {
+			t.Fatalf("Emit returned error: %v", err)
+		}
+
+		assertCleanupBindings(t, paths)
+	})
+}
+
+func assertCleanupBindings(t *testing.T, paths map[string][]byte) {
+	t.Helper()
 
 	// Verify loop_gen.go contains pw_main_loop_quit
 	loopCapiContent := string(paths["internal/capi/loop_gen.go"])

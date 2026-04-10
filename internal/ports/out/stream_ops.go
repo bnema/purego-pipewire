@@ -9,7 +9,7 @@ type StreamOps interface {
 	// CreatePlaybackStream creates a new playback stream attached to the given
 	// main loop. The onProcess callback is invoked by PipeWire each time the
 	// stream needs more audio data. Returns the stream pointer or an error.
-	CreatePlaybackStream(loopPtr unsafe.Pointer, name string, sampleRate int, channels int, onProcess func()) (streamPtr unsafe.Pointer, err error)
+	CreatePlaybackStream(loopPtr unsafe.Pointer, name string, onProcess func()) (streamPtr unsafe.Pointer, err error)
 
 	// ConnectPlaybackStream connects the stream for playback output.
 	ConnectPlaybackStream(streamPtr unsafe.Pointer) error

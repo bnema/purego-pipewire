@@ -15,6 +15,14 @@ var (
 	errMainLoopCreate = errors.New("pw_main_loop_new returned nil")
 )
 
+const pwVersionStreamEvents = 2
+
+const (
+	pwDirectionOutput                 = 1
+	pwIDAny                           = 0xffffffff
+	pwStreamFlagAutoConnectMapBuffers = 0x05
+)
+
 // streamCallbackStorage keeps the pw_stream_events struct and its
 // associated Go callback alive for the lifetime of the stream.
 // Without this, the stack-allocated values in CreatePlaybackStream
@@ -34,7 +42,7 @@ type streamOpsImpl struct {
 // Verify interface compliance at compile time.
 var _ portout.StreamOps = (*streamOpsImpl)(nil)
 
-func (s *streamOpsImpl) CreatePlaybackStream(loopPtr unsafe.Pointer, name string, sampleRate int, channels int, onProcess func()) (unsafe.Pointer, error) {
+func (s *streamOpsImpl) CreatePlaybackStream(loopPtr unsafe.Pointer, name string, onProcess func()) (unsafe.Pointer, error) {
 	nameBytes := append([]byte(name), 0)
 
 	// Build persistent callback storage that outlives this function.
@@ -43,7 +51,7 @@ func (s *streamOpsImpl) CreatePlaybackStream(loopPtr unsafe.Pointer, name string
 		onProcess()
 	}
 	storage.events = pw_stream_events{
-		version: 0, // PW_VERSION_STREAM_EVENTS
+		version: pwVersionStreamEvents,
 		process: &storage.processCb,
 	}
 
@@ -72,7 +80,7 @@ func (s *streamOpsImpl) CreatePlaybackStream(loopPtr unsafe.Pointer, name string
 func (s *streamOpsImpl) ConnectPlaybackStream(streamPtr unsafe.Pointer) error {
 	// PW_DIRECTION_OUTPUT = 1, PW_ID_ANY = 0xffffffff
 	// PW_STREAM_FLAG_AUTOCONNECT | PW_STREAM_FLAG_MAP_BUFFERS = 0x01 | 0x04
-	ret := pw_stream_connect(streamPtr, 1, 0xffffffff, 0x05, nil, 0)
+	ret := pw_stream_connect(streamPtr, pwDirectionOutput, pwIDAny, pwStreamFlagAutoConnectMapBuffers, nil, 0)
 	if ret < 0 {
 		return errStreamConnect
 	}
@@ -99,6 +107,8 @@ func (s *streamOpsImpl) QueueBuffer(streamPtr unsafe.Pointer, bufPtr unsafe.Poin
 	return nil
 }
 
+// DisconnectStream intentionally ignores the PipeWire return code.
+// Close-path cleanup is best-effort here, and destroy is the definitive release.
 func (s *streamOpsImpl) DisconnectStream(streamPtr unsafe.Pointer) {
 	pw_stream_disconnect(streamPtr)
 }

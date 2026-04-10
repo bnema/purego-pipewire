@@ -207,30 +207,41 @@ func (p *player) setPaused(paused bool) {
 // deactivateStream deactivates the stream via StreamOps.
 // Returns an error if deactivation fails. No-op when streamOps is nil.
 func (p *player) deactivateStream() error {
-	if p.streamOps == nil || p.streamPtr == nil {
+	p.mu.Lock()
+	streamOps := p.streamOps
+	streamPtr := p.streamPtr
+	p.mu.Unlock()
+
+	if streamOps == nil || streamPtr == nil {
 		return nil
 	}
-	return p.streamOps.SetStreamActive(p.streamPtr, false)
+	return streamOps.SetStreamActive(streamPtr, false)
 }
 
 // teardown releases player-owned stream and main-loop resources through
 // StreamOps. Safe to call when fields are nil or on repeated invocation.
 func (p *player) teardown() {
-	if p.streamOps == nil {
+	p.mu.Lock()
+	streamOps := p.streamOps
+	streamPtr := p.streamPtr
+	loopPtr := p.loopPtr
+	p.streamPtr = nil
+	p.loopPtr = nil
+	p.mu.Unlock()
+
+	if streamOps == nil {
 		return
 	}
 
 	// Destroy stream first (it depends on the loop).
-	if p.streamPtr != nil {
-		p.streamOps.DestroyStream(p.streamPtr)
-		p.streamPtr = nil
+	if streamPtr != nil {
+		streamOps.DestroyStream(streamPtr)
 	}
 
 	// Quit then destroy the main loop.
-	if p.loopPtr != nil {
-		p.streamOps.QuitMainLoop(p.loopPtr)
-		p.streamOps.DestroyMainLoop(p.loopPtr)
-		p.loopPtr = nil
+	if loopPtr != nil {
+		streamOps.QuitMainLoop(loopPtr)
+		streamOps.DestroyMainLoop(loopPtr)
 	}
 }
 

@@ -6,7 +6,6 @@ import (
 	"unsafe"
 
 	"github.com/bnema/purego-pipewire/internal/ports/out/mocks"
-	"github.com/stretchr/testify/mock"
 )
 
 func TestPlayerStopIsRestartableButCloseIsTerminal(t *testing.T) {
@@ -369,6 +368,3 @@ func TestPlayerTeardownWithOnlyLoopPtr(t *testing.T) {
 		t.Error("expected loopPtr to be nil after teardown")
 	}
 }
-
-// Ensure mock.Mock is referenced to satisfy the import.
-var _ mock.TestingT = (*testing.T)(nil)

@@ -142,8 +142,8 @@ func (_c *MockStreamOps_CreateMainLoop_Call) RunAndReturn(run func() (unsafe.Poi
 }
 
 // CreatePlaybackStream provides a mock function for the type MockStreamOps
-func (_mock *MockStreamOps) CreatePlaybackStream(loopPtr unsafe.Pointer, name string, sampleRate int, channels int, onProcess func()) (unsafe.Pointer, error) {
-	ret := _mock.Called(loopPtr, name, sampleRate, channels, onProcess)
+func (_mock *MockStreamOps) CreatePlaybackStream(loopPtr unsafe.Pointer, name string, onProcess func()) (unsafe.Pointer, error) {
+	ret := _mock.Called(loopPtr, name, onProcess)
 
 	if len(ret) == 0 {
 		panic("no return value specified for CreatePlaybackStream")
@@ -151,16 +151,16 @@ func (_mock *MockStreamOps) CreatePlaybackStream(loopPtr unsafe.Pointer, name st
 
 	var r0 unsafe.Pointer
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(unsafe.Pointer, string, int, int, func()) (unsafe.Pointer, error)); ok {
-		return returnFunc(loopPtr, name, sampleRate, channels, onProcess)
+	if returnFunc, ok := ret.Get(0).(func(unsafe.Pointer, string, func()) (unsafe.Pointer, error)); ok {
+		return returnFunc(loopPtr, name, onProcess)
 	}
-	if returnFunc, ok := ret.Get(0).(func(unsafe.Pointer, string, int, int, func()) unsafe.Pointer); ok {
-		r0 = returnFunc(loopPtr, name, sampleRate, channels, onProcess)
+	if returnFunc, ok := ret.Get(0).(func(unsafe.Pointer, string, func()) unsafe.Pointer); ok {
+		r0 = returnFunc(loopPtr, name, onProcess)
 	} else {
 		r0 = ret.Get(0).(unsafe.Pointer)
 	}
-	if returnFunc, ok := ret.Get(1).(func(unsafe.Pointer, string, int, int, func()) error); ok {
-		r1 = returnFunc(loopPtr, name, sampleRate, channels, onProcess)
+	if returnFunc, ok := ret.Get(1).(func(unsafe.Pointer, string, func()) error); ok {
+		r1 = returnFunc(loopPtr, name, onProcess)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -175,14 +175,12 @@ type MockStreamOps_CreatePlaybackStream_Call struct {
 // CreatePlaybackStream is a helper method to define mock.On call
 //   - loopPtr unsafe.Pointer
 //   - name string
-//   - sampleRate int
-//   - channels int
 //   - onProcess func()
-func (_e *MockStreamOps_Expecter) CreatePlaybackStream(loopPtr interface{}, name interface{}, sampleRate interface{}, channels interface{}, onProcess interface{}) *MockStreamOps_CreatePlaybackStream_Call {
-	return &MockStreamOps_CreatePlaybackStream_Call{Call: _e.mock.On("CreatePlaybackStream", loopPtr, name, sampleRate, channels, onProcess)}
+func (_e *MockStreamOps_Expecter) CreatePlaybackStream(loopPtr interface{}, name interface{}, onProcess interface{}) *MockStreamOps_CreatePlaybackStream_Call {
+	return &MockStreamOps_CreatePlaybackStream_Call{Call: _e.mock.On("CreatePlaybackStream", loopPtr, name, onProcess)}
 }
 
-func (_c *MockStreamOps_CreatePlaybackStream_Call) Run(run func(loopPtr unsafe.Pointer, name string, sampleRate int, channels int, onProcess func())) *MockStreamOps_CreatePlaybackStream_Call {
+func (_c *MockStreamOps_CreatePlaybackStream_Call) Run(run func(loopPtr unsafe.Pointer, name string, onProcess func())) *MockStreamOps_CreatePlaybackStream_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 unsafe.Pointer
 		if args[0] != nil {
@@ -192,24 +190,14 @@ func (_c *MockStreamOps_CreatePlaybackStream_Call) Run(run func(loopPtr unsafe.P
 		if args[1] != nil {
 			arg1 = args[1].(string)
 		}
-		var arg2 int
+		var arg2 func()
 		if args[2] != nil {
-			arg2 = args[2].(int)
-		}
-		var arg3 int
-		if args[3] != nil {
-			arg3 = args[3].(int)
-		}
-		var arg4 func()
-		if args[4] != nil {
-			arg4 = args[4].(func())
+			arg2 = args[2].(func())
 		}
 		run(
 			arg0,
 			arg1,
 			arg2,
-			arg3,
-			arg4,
 		)
 	})
 	return _c
@@ -220,7 +208,7 @@ func (_c *MockStreamOps_CreatePlaybackStream_Call) Return(streamPtr unsafe.Point
 	return _c
 }
 
-func (_c *MockStreamOps_CreatePlaybackStream_Call) RunAndReturn(run func(loopPtr unsafe.Pointer, name string, sampleRate int, channels int, onProcess func()) (unsafe.Pointer, error)) *MockStreamOps_CreatePlaybackStream_Call {
+func (_c *MockStreamOps_CreatePlaybackStream_Call) RunAndReturn(run func(loopPtr unsafe.Pointer, name string, onProcess func()) (unsafe.Pointer, error)) *MockStreamOps_CreatePlaybackStream_Call {
 	_c.Call.Return(run)
 	return _c
 }
