@@ -45,4 +45,4 @@ Tagged integration tests require a **real PipeWire runtime/daemon** and verify t
 
     go test -tags integration ./integration ./pipewire -v
 
-These tests exercise state transitions (Idle → Playing → Stopped → Closed) through an actual PipeWire instance. Deeper cleanup internals are primarily covered by unit tests that use mocked dependencies.
+The player integration suite exercises state transitions (Idle → Playing → Stopped → Closed) and proves that the real start path reaches the PipeWire process callback, invoking the user-supplied `Fill` callback under a live daemon. Deeper cleanup internals are primarily covered by unit tests that use mocked dependencies.
