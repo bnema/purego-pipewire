@@ -496,3 +496,119 @@ func TestConnectPlaybackStreamPassesParamsFromHelper(t *testing.T) {
 		t.Fatal("expected nParams > 0 from buildRawAudioParams, got 0")
 	}
 }
+
+// TestConnectPlaybackStreamPinsParamsAfterSuccess verifies that ConnectPlaybackStream
+// stores the connectParams in pinnedParams so the SPA POD backing storage outlives
+// the function call.
+func TestConnectPlaybackStreamPinsParamsAfterSuccess(t *testing.T) {
+	origConnect := pw_stream_connect
+	t.Cleanup(func() { pw_stream_connect = origConnect })
+
+	pw_stream_connect = func(stream unsafe.Pointer, direction int32, id uint32, flags uint32, ports unsafe.Pointer, n_ports uint32) int32 {
+		return 0
+	}
+
+	ops := &streamOpsImpl{}
+	fakePtr := unsafe.Pointer(uintptr(0x5678))
+
+	validFmt := portout.PlaybackFormat{
+		SampleRate:      48000,
+		Channels:        2,
+		FramesPerBuffer: 1024,
+	}
+	err := ops.ConnectPlaybackStream(fakePtr, validFmt)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	cp, ok := ops.pinnedParams[fakePtr]
+	if !ok {
+		t.Fatal("expected connectParams to be pinned for stream after ConnectPlaybackStream")
+	}
+	if cp == nil {
+		t.Fatal("pinned connectParams should not be nil")
+	}
+	// Verify the pinned params point to real SPA POD data.
+	if cp.Count() != 1 {
+		t.Fatalf("expected pinned params Count()=1, got %d", cp.Count())
+	}
+	if cp.Pointer() == nil {
+		t.Fatal("expected pinned params Pointer() to be non-nil")
+	}
+}
+
+// TestConnectPlaybackStreamDoesNotPinParamsOnFailure verifies that when pw_stream_connect
+// returns a negative result, connectParams are NOT pinned.
+func TestConnectPlaybackStreamDoesNotPinParamsOnFailure(t *testing.T) {
+	origConnect := pw_stream_connect
+	t.Cleanup(func() { pw_stream_connect = origConnect })
+
+	pw_stream_connect = func(stream unsafe.Pointer, direction int32, id uint32, flags uint32, ports unsafe.Pointer, n_ports uint32) int32 {
+		return -22 // EINVAL
+	}
+
+	ops := &streamOpsImpl{}
+	fakePtr := unsafe.Pointer(uintptr(0x5678))
+
+	validFmt := portout.PlaybackFormat{
+		SampleRate:      48000,
+		Channels:        2,
+		FramesPerBuffer: 1024,
+	}
+	err := ops.ConnectPlaybackStream(fakePtr, validFmt)
+	if err == nil {
+		t.Fatal("expected error for negative return code")
+	}
+
+	if _, ok := ops.pinnedParams[fakePtr]; ok {
+		t.Fatal("connectParams should NOT be pinned when pw_stream_connect fails")
+	}
+}
+
+// TestDestroyStreamReleasesPinnedParams verifies that DestroyStream removes both the
+// callback storage and the connect params from the pinned maps.
+func TestDestroyStreamReleasesPinnedParams(t *testing.T) {
+	origConnect := pw_stream_connect
+	origDestroy := pw_stream_destroy
+	t.Cleanup(func() {
+		pw_stream_connect = origConnect
+		pw_stream_destroy = origDestroy
+	})
+
+	pw_stream_connect = func(stream unsafe.Pointer, direction int32, id uint32, flags uint32, ports unsafe.Pointer, n_ports uint32) int32 {
+		return 0
+	}
+	pw_stream_destroy = func(_ unsafe.Pointer) {}
+
+	ops := &streamOpsImpl{
+		pinned: make(map[unsafe.Pointer]*streamCallbackStorage),
+	}
+
+	fakePtr := unsafe.Pointer(uintptr(0xDEAD))
+	ops.pinned[fakePtr] = &streamCallbackStorage{}
+
+	validFmt := portout.PlaybackFormat{
+		SampleRate:      48000,
+		Channels:        2,
+		FramesPerBuffer: 1024,
+	}
+	err := ops.ConnectPlaybackStream(fakePtr, validFmt)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Verify params are pinned.
+	if _, ok := ops.pinnedParams[fakePtr]; !ok {
+		t.Fatal("expected connectParams to be pinned before DestroyStream")
+	}
+
+	ops.DestroyStream(fakePtr)
+
+	// Both maps should no longer contain the stream.
+	if _, ok := ops.pinned[fakePtr]; ok {
+		t.Error("expected callback storage to be removed after DestroyStream")
+	}
+	if _, ok := ops.pinnedParams[fakePtr]; ok {
+		t.Error("expected connectParams to be removed after DestroyStream")
+	}
+}

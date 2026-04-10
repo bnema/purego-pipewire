@@ -49,9 +49,18 @@ type streamCallbackStorage struct {
 
 // streamOpsImpl implements portout.StreamOps using the real PipeWire C API
 // bindings registered via purego.
+//
+// Ownership/lifetime contract:
+//   - pinned holds streamCallbackStorage for each stream created via CreatePlaybackStream.
+//     It keeps Go callback closures alive so PipeWire can call them safely.
+//   - pinnedParams holds connectParams for each stream connected via ConnectPlaybackStream.
+//     PipeWire reads the SPA POD params asynchronously during format negotiation, so the
+//     backing byte storage must remain live until DestroyStream releases it.
+//   - Both maps are keyed by the stream pointer and must be cleaned up in DestroyStream.
 type streamOpsImpl struct {
-	mu     sync.Mutex
-	pinned map[unsafe.Pointer]*streamCallbackStorage // keyed by stream ptr
+	mu           sync.Mutex
+	pinned       map[unsafe.Pointer]*streamCallbackStorage // keyed by stream ptr
+	pinnedParams map[unsafe.Pointer]*connectParams         // keyed by stream ptr
 }
 
 // Verify interface compliance at compile time.
@@ -120,6 +129,17 @@ func (s *streamOpsImpl) ConnectPlaybackStream(streamPtr unsafe.Pointer, format p
 	if ret < 0 {
 		return &PWError{Func: "pw_stream_connect", Code: ret}
 	}
+
+	// Pin the connectParams for the lifetime of the stream. PipeWire reads
+	// the SPA POD params asynchronously during format negotiation, so the
+	// backing storage must remain alive until the stream is destroyed.
+	s.mu.Lock()
+	if s.pinnedParams == nil {
+		s.pinnedParams = make(map[unsafe.Pointer]*connectParams)
+	}
+	s.pinnedParams[streamPtr] = cp
+	s.mu.Unlock()
+
 	return nil
 }
 
@@ -160,8 +180,9 @@ func (s *streamOpsImpl) DestroyStream(streamPtr unsafe.Pointer) {
 		s.mu.Unlock()
 		return
 	}
-	// Unpin callback storage — safe now that the stream is being destroyed.
+	// Unpin callback storage and connect params — safe now that the stream is being destroyed.
 	delete(s.pinned, streamPtr)
+	delete(s.pinnedParams, streamPtr)
 	s.mu.Unlock()
 
 	// Use the generated pw_stream_destroy binding for proper cleanup.
