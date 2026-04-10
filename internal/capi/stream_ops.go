@@ -27,9 +27,8 @@ type streamCallbackStorage struct {
 // streamOpsImpl implements portout.StreamOps using the real PipeWire C API
 // bindings registered via purego.
 type streamOpsImpl struct {
-	mu        sync.Mutex
-	pinned    map[unsafe.Pointer]*streamCallbackStorage // keyed by stream ptr
-	destroyed map[unsafe.Pointer]bool                   // guard double-destroy
+	mu     sync.Mutex
+	pinned map[unsafe.Pointer]*streamCallbackStorage // keyed by stream ptr
 }
 
 // Verify interface compliance at compile time.
@@ -106,14 +105,11 @@ func (s *streamOpsImpl) DisconnectStream(streamPtr unsafe.Pointer) {
 
 func (s *streamOpsImpl) DestroyStream(streamPtr unsafe.Pointer) {
 	s.mu.Lock()
-	if s.destroyed == nil {
-		s.destroyed = make(map[unsafe.Pointer]bool)
-	}
-	if s.destroyed[streamPtr] {
+	if _, alive := s.pinned[streamPtr]; !alive {
+		// Already destroyed or never tracked — skip.
 		s.mu.Unlock()
 		return
 	}
-	s.destroyed[streamPtr] = true
 	// Unpin callback storage — safe now that the stream is being destroyed.
 	delete(s.pinned, streamPtr)
 	s.mu.Unlock()

@@ -247,5 +247,128 @@ func TestPlayerStopWithoutStreamOpsIsNoop(t *testing.T) {
 	}
 }
 
+// TestPlayerCloseTeardownCallsStreamOps verifies that Close() calls
+// DestroyStream, QuitMainLoop, and DestroyMainLoop through StreamOps
+// when the corresponding pointers are set.
+func TestPlayerCloseTeardownCallsStreamOps(t *testing.T) {
+	mockOps := mocks.NewMockStreamOps(t)
+	fakeStream := unsafe.Pointer(uintptr(0xAAAA))
+	fakeLoop := unsafe.Pointer(uintptr(0xBBBB))
+
+	// Expect teardown calls in order: DestroyStream, QuitMainLoop, DestroyMainLoop.
+	mockOps.EXPECT().DestroyStream(fakeStream).Return()
+	mockOps.EXPECT().QuitMainLoop(fakeLoop).Return()
+	mockOps.EXPECT().DestroyMainLoop(fakeLoop).Return()
+
+	p := newPlayer(PlayerConfig{}, PlayerCallbacks{})
+	p.streamOps = mockOps
+	p.streamPtr = fakeStream
+	p.loopPtr = fakeLoop
+
+	// Move to a state that allows Close.
+	p.setState(PlayerStatePlaying)
+
+	if err := p.Close(); err != nil {
+		t.Fatalf("Close failed: %v", err)
+	}
+	if p.State() != PlayerStateClosed {
+		t.Fatalf("expected Closed state, got %v", p.State())
+	}
+
+	// Pointers should be nil after teardown so repeated close is safe.
+	if p.streamPtr != nil {
+		t.Error("expected streamPtr to be nil after teardown")
+	}
+	if p.loopPtr != nil {
+		t.Error("expected loopPtr to be nil after teardown")
+	}
+}
+
+// TestPlayerCloseWithNilPointersIsNoop verifies that teardown is safe
+// when no stream/loop pointers are set.
+func TestPlayerCloseWithNilPointersIsNoop(t *testing.T) {
+	p := newPlayer(PlayerConfig{}, PlayerCallbacks{})
+	p.setState(PlayerStatePlaying)
+
+	// No streamOps, no pointers — Close should succeed without panic.
+	if err := p.Close(); err != nil {
+		t.Fatalf("Close failed: %v", err)
+	}
+	if p.State() != PlayerStateClosed {
+		t.Fatalf("expected Closed state, got %v", p.State())
+	}
+}
+
+// TestPlayerRepeatedCloseIsSafe verifies that calling Close() twice
+// with teardown resources does not call StreamOps methods a second time.
+func TestPlayerRepeatedCloseIsSafe(t *testing.T) {
+	mockOps := mocks.NewMockStreamOps(t)
+	fakeStream := unsafe.Pointer(uintptr(0xCCCC))
+	fakeLoop := unsafe.Pointer(uintptr(0xDDDD))
+
+	// Only expect one set of teardown calls.
+	mockOps.EXPECT().DestroyStream(fakeStream).Return()
+	mockOps.EXPECT().QuitMainLoop(fakeLoop).Return()
+	mockOps.EXPECT().DestroyMainLoop(fakeLoop).Return()
+
+	p := newPlayer(PlayerConfig{}, PlayerCallbacks{})
+	p.streamOps = mockOps
+	p.streamPtr = fakeStream
+	p.loopPtr = fakeLoop
+	p.setState(PlayerStatePlaying)
+
+	if err := p.Close(); err != nil {
+		t.Fatalf("first Close failed: %v", err)
+	}
+
+	// Second close should succeed and not call StreamOps again.
+	if err := p.Close(); err != nil {
+		t.Fatalf("second Close failed: %v", err)
+	}
+}
+
+// TestPlayerTeardownWithOnlyStreamPtr verifies teardown works
+// when only streamPtr is set (no loopPtr).
+func TestPlayerTeardownWithOnlyStreamPtr(t *testing.T) {
+	mockOps := mocks.NewMockStreamOps(t)
+	fakeStream := unsafe.Pointer(uintptr(0xEEEE))
+
+	mockOps.EXPECT().DestroyStream(fakeStream).Return()
+
+	p := newPlayer(PlayerConfig{}, PlayerCallbacks{})
+	p.streamOps = mockOps
+	p.streamPtr = fakeStream
+	p.setState(PlayerStatePlaying)
+
+	if err := p.Close(); err != nil {
+		t.Fatalf("Close failed: %v", err)
+	}
+	if p.streamPtr != nil {
+		t.Error("expected streamPtr to be nil after teardown")
+	}
+}
+
+// TestPlayerTeardownWithOnlyLoopPtr verifies teardown works
+// when only loopPtr is set (no streamPtr).
+func TestPlayerTeardownWithOnlyLoopPtr(t *testing.T) {
+	mockOps := mocks.NewMockStreamOps(t)
+	fakeLoop := unsafe.Pointer(uintptr(0xFFFF))
+
+	mockOps.EXPECT().QuitMainLoop(fakeLoop).Return()
+	mockOps.EXPECT().DestroyMainLoop(fakeLoop).Return()
+
+	p := newPlayer(PlayerConfig{}, PlayerCallbacks{})
+	p.streamOps = mockOps
+	p.loopPtr = fakeLoop
+	p.setState(PlayerStatePlaying)
+
+	if err := p.Close(); err != nil {
+		t.Fatalf("Close failed: %v", err)
+	}
+	if p.loopPtr != nil {
+		t.Error("expected loopPtr to be nil after teardown")
+	}
+}
+
 // Ensure mock.Mock is referenced to satisfy the import.
 var _ mock.TestingT = (*testing.T)(nil)

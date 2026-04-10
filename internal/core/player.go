@@ -213,9 +213,25 @@ func (p *player) deactivateStream() error {
 	return p.streamOps.SetStreamActive(p.streamPtr, false)
 }
 
-// teardown performs cleanup (placeholder)
+// teardown releases player-owned stream and main-loop resources through
+// StreamOps. Safe to call when fields are nil or on repeated invocation.
 func (p *player) teardown() {
-	// Minimal placeholder - will be implemented in future tasks
+	if p.streamOps == nil {
+		return
+	}
+
+	// Destroy stream first (it depends on the loop).
+	if p.streamPtr != nil {
+		p.streamOps.DestroyStream(p.streamPtr)
+		p.streamPtr = nil
+	}
+
+	// Quit then destroy the main loop.
+	if p.loopPtr != nil {
+		p.streamOps.QuitMainLoop(p.loopPtr)
+		p.streamOps.DestroyMainLoop(p.loopPtr)
+		p.loopPtr = nil
+	}
 }
 
 // Player is the exported wrapper for the internal player

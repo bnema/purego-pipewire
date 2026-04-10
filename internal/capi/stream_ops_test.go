@@ -20,8 +20,7 @@ func TestDestroyStreamCallsPwStreamDestroy(t *testing.T) {
 	}
 
 	ops := &streamOpsImpl{
-		pinned:    make(map[unsafe.Pointer]*streamCallbackStorage),
-		destroyed: make(map[unsafe.Pointer]bool),
+		pinned: make(map[unsafe.Pointer]*streamCallbackStorage),
 	}
 
 	fakePtr := unsafe.Pointer(uintptr(0x1234))
@@ -36,10 +35,7 @@ func TestDestroyStreamCallsPwStreamDestroy(t *testing.T) {
 		t.Fatalf("pw_stream_destroy received %v, want %v", receivedPtr, fakePtr)
 	}
 
-	// Verify internal bookkeeping.
-	if !ops.destroyed[fakePtr] {
-		t.Error("expected stream to be marked as destroyed")
-	}
+	// Verify internal bookkeeping: pinned entry should be removed.
 	if _, exists := ops.pinned[fakePtr]; exists {
 		t.Error("expected callback storage to be unpinned after destroy")
 	}
@@ -57,8 +53,7 @@ func TestDestroyStreamDoubleDestroySkipsSecondCall(t *testing.T) {
 	}
 
 	ops := &streamOpsImpl{
-		pinned:    make(map[unsafe.Pointer]*streamCallbackStorage),
-		destroyed: make(map[unsafe.Pointer]bool),
+		pinned: make(map[unsafe.Pointer]*streamCallbackStorage),
 	}
 
 	fakePtr := unsafe.Pointer(uintptr(0xABCD))
@@ -69,6 +64,31 @@ func TestDestroyStreamDoubleDestroySkipsSecondCall(t *testing.T) {
 
 	if callCount != 1 {
 		t.Fatalf("pw_stream_destroy called %d times, want 1", callCount)
+	}
+}
+
+// TestDestroyStreamBookkeepingDoesNotLeak verifies that internal tracking
+// does not retain entries after cleanup across many create/destroy cycles.
+func TestDestroyStreamBookkeepingDoesNotLeak(t *testing.T) {
+	origDestroy := pw_stream_destroy
+	t.Cleanup(func() { pw_stream_destroy = origDestroy })
+
+	pw_stream_destroy = func(_ unsafe.Pointer) {}
+
+	ops := &streamOpsImpl{
+		pinned: make(map[unsafe.Pointer]*streamCallbackStorage),
+	}
+
+	const cycles = 100
+	for i := uintptr(1); i <= cycles; i++ {
+		ptr := unsafe.Pointer(i)
+		ops.pinned[ptr] = &streamCallbackStorage{}
+		ops.DestroyStream(ptr)
+	}
+
+	// After destroying all streams, pinned map should be empty.
+	if len(ops.pinned) != 0 {
+		t.Fatalf("pinned map has %d entries after %d cycles; expected 0", len(ops.pinned), cycles)
 	}
 }
 
