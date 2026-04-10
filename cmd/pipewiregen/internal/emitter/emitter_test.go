@@ -279,3 +279,56 @@ func assertCleanupBindings(t *testing.T, paths map[string][]byte) {
 		t.Fatalf("port stream_playback output missing PWStreamDestroy method")
 	}
 }
+
+func TestExtractParamNames(t *testing.T) {
+	tests := []struct {
+		name   string
+		input  string
+		expect string
+	}{
+		{
+			name:   "empty parameter list",
+			input:  "()",
+			expect: "()",
+		},
+		{
+			name:   "single parameter",
+			input:  "(stream unsafe.Pointer)",
+			expect: "(stream)",
+		},
+		{
+			name:   "multiple parameters",
+			input:  "(stream unsafe.Pointer, direction int32, id uint32)",
+			expect: "(stream, direction, id)",
+		},
+		{
+			name:   "nested function-type parameter with inner commas",
+			input:  "(callback func(int, int), count int32)",
+			expect: "(callback, count)",
+		},
+		{
+			name:   "nested function-type with multiple inner params",
+			input:  "(handler func(a int32, b int32, c int32), ctx unsafe.Pointer)",
+			expect: "(handler, ctx)",
+		},
+		{
+			name:   "pointer type with multiple stars",
+			input:  "(argv ***byte)",
+			expect: "(argv)",
+		},
+		{
+			name:   "no parameters bare parens trimmed to empty",
+			input:  "()",
+			expect: "()",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := extractParamNames(tt.input)
+			if got != tt.expect {
+				t.Errorf("extractParamNames(%q) = %q, want %q", tt.input, got, tt.expect)
+			}
+		})
+	}
+}

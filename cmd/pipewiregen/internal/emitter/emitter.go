@@ -256,23 +256,38 @@ func parseSignature(sig string) (params, results string) {
 // extractParamNames parses a typed parameter list like "(argc *int32, argv ***byte)"
 // and returns a call-site argument list like "(argc, argv)".
 // It strips all type information, keeping only the parameter names.
+// It uses depth-aware comma splitting to correctly handle nested function-type
+// parameters like "callback func(int, int)".
 func extractParamNames(params string) string {
 	inner := strings.Trim(params, "()")
 	if inner == "" {
 		return "()"
 	}
 
-	parts := strings.Split(inner, ",")
-	names := make([]string, 0, len(parts))
-	for _, part := range parts {
-		part = strings.TrimSpace(part)
-		// Each part is "name type" or "name type1/type2" — the first space separates name from type.
-		idx := strings.IndexByte(part, ' ')
+	// Split on commas at depth 0 only (respecting nested parens)
+	var segments []string
+	depth := 0
+	start := 0
+	for i, ch := range inner {
+		if ch == '(' {
+			depth++
+		} else if ch == ')' {
+			depth--
+		} else if ch == ',' && depth == 0 {
+			segments = append(segments, strings.TrimSpace(inner[start:i]))
+			start = i + 1
+		}
+	}
+	segments = append(segments, strings.TrimSpace(inner[start:]))
+
+	names := make([]string, 0, len(segments))
+	for _, seg := range segments {
+		// Each segment is "name type" — the first space at depth 0 separates name from type.
+		idx := strings.IndexByte(seg, ' ')
 		if idx < 0 {
-			// No space means just a name with no type (shouldn't happen in valid Go, but handle it)
-			names = append(names, part)
+			names = append(names, seg)
 		} else {
-			names = append(names, part[:idx])
+			names = append(names, seg[:idx])
 		}
 	}
 	return "(" + strings.Join(names, ", ") + ")"
