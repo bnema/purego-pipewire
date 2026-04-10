@@ -207,6 +207,7 @@ func NewPlayer(config PlayerConfig, callbacks PlayerCallbacks) (Player, error) {
 
 	// Create internal player with mapped config
 	coreConfig := core.PlayerConfig{
+		SampleRate:      config.SampleRate,
 		FramesPerBuffer: config.FramesPerBuffer,
 		Channels:        config.Channels,
 		UnderrunPolicy:  coreUnderrunPolicy,

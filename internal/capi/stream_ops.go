@@ -85,7 +85,12 @@ func (s *streamOpsImpl) CreatePlaybackStream(loopPtr unsafe.Pointer, name string
 	return ptr, nil
 }
 
-func (s *streamOpsImpl) ConnectPlaybackStream(streamPtr unsafe.Pointer) error {
+func (s *streamOpsImpl) ConnectPlaybackStream(streamPtr unsafe.Pointer, format portout.PlaybackFormat) error {
+	// Validate format before making the C call.
+	if format.SampleRate <= 0 || format.Channels <= 0 || format.FramesPerBuffer <= 0 {
+		return fmt.Errorf("invalid PlaybackFormat: SampleRate=%d, Channels=%d, FramesPerBuffer=%d",
+			format.SampleRate, format.Channels, format.FramesPerBuffer)
+	}
 	// PW_DIRECTION_OUTPUT = 1, PW_ID_ANY = 0xffffffff
 	// PW_STREAM_FLAG_AUTOCONNECT | PW_STREAM_FLAG_MAP_BUFFERS = 0x01 | 0x04
 	ret := pw_stream_connect(streamPtr, pwDirectionOutput, pwIDAny, pwStreamFlagAutoConnectMapBuffers, nil, 0)
@@ -148,8 +153,12 @@ func (s *streamOpsImpl) CreateMainLoop() (unsafe.Pointer, error) {
 	return ptr, nil
 }
 
-func (s *streamOpsImpl) RunMainLoop(loopPtr unsafe.Pointer) {
-	pw_main_loop_run(loopPtr)
+func (s *streamOpsImpl) RunMainLoop(loopPtr unsafe.Pointer) error {
+	ret := pw_main_loop_run(loopPtr)
+	if ret < 0 {
+		return &PWError{Func: "pw_main_loop_run", Code: ret}
+	}
+	return nil
 }
 
 func (s *streamOpsImpl) QuitMainLoop(loopPtr unsafe.Pointer) {

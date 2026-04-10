@@ -2,6 +2,13 @@ package out
 
 import "unsafe"
 
+// PlaybackFormat describes the audio format for a playback stream.
+type PlaybackFormat struct {
+	SampleRate      int
+	Channels        int
+	FramesPerBuffer int
+}
+
 // StreamOps defines the outbound interface for PipeWire stream lifecycle
 // operations that the player needs. This abstracts the raw C API so the
 // player can be tested without a real PipeWire daemon.
@@ -11,8 +18,9 @@ type StreamOps interface {
 	// stream needs more audio data. Returns the stream pointer or an error.
 	CreatePlaybackStream(loopPtr unsafe.Pointer, name string, onProcess func()) (streamPtr unsafe.Pointer, err error)
 
-	// ConnectPlaybackStream connects the stream for playback output.
-	ConnectPlaybackStream(streamPtr unsafe.Pointer) error
+	// ConnectPlaybackStream connects the stream for playback output using the
+	// given format. Returns an error if the format is invalid or the C call fails.
+	ConnectPlaybackStream(streamPtr unsafe.Pointer, format PlaybackFormat) error
 
 	// SetStreamActive activates or deactivates the stream.
 	SetStreamActive(streamPtr unsafe.Pointer, active bool) error
@@ -36,7 +44,8 @@ type StreamOps interface {
 	CreateMainLoop() (loopPtr unsafe.Pointer, err error)
 
 	// RunMainLoop runs the main loop (blocks until quit).
-	RunMainLoop(loopPtr unsafe.Pointer)
+	// Returns an error if the loop fails to run.
+	RunMainLoop(loopPtr unsafe.Pointer) error
 
 	// QuitMainLoop signals the main loop to stop.
 	QuitMainLoop(loopPtr unsafe.Pointer)

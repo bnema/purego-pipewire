@@ -36,6 +36,7 @@ func (b *PCMBuffer) allocate() {
 
 // PlayerConfig holds configuration for the player
 type PlayerConfig struct {
+	SampleRate      int
 	FramesPerBuffer int
 	Channels        int
 	UnderrunPolicy  UnderrunPolicy

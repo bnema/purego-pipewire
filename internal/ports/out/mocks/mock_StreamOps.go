@@ -7,6 +7,7 @@ package mocks
 import (
 	"unsafe"
 
+	"github.com/bnema/purego-pipewire/internal/ports/out"
 	mock "github.com/stretchr/testify/mock"
 )
 
@@ -38,16 +39,16 @@ func (_m *MockStreamOps) EXPECT() *MockStreamOps_Expecter {
 }
 
 // ConnectPlaybackStream provides a mock function for the type MockStreamOps
-func (_mock *MockStreamOps) ConnectPlaybackStream(streamPtr unsafe.Pointer) error {
-	ret := _mock.Called(streamPtr)
+func (_mock *MockStreamOps) ConnectPlaybackStream(streamPtr unsafe.Pointer, format out.PlaybackFormat) error {
+	ret := _mock.Called(streamPtr, format)
 
 	if len(ret) == 0 {
 		panic("no return value specified for ConnectPlaybackStream")
 	}
 
 	var r0 error
-	if returnFunc, ok := ret.Get(0).(func(unsafe.Pointer) error); ok {
-		r0 = returnFunc(streamPtr)
+	if returnFunc, ok := ret.Get(0).(func(unsafe.Pointer, out.PlaybackFormat) error); ok {
+		r0 = returnFunc(streamPtr, format)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -61,18 +62,24 @@ type MockStreamOps_ConnectPlaybackStream_Call struct {
 
 // ConnectPlaybackStream is a helper method to define mock.On call
 //   - streamPtr unsafe.Pointer
-func (_e *MockStreamOps_Expecter) ConnectPlaybackStream(streamPtr interface{}) *MockStreamOps_ConnectPlaybackStream_Call {
-	return &MockStreamOps_ConnectPlaybackStream_Call{Call: _e.mock.On("ConnectPlaybackStream", streamPtr)}
+//   - format out.PlaybackFormat
+func (_e *MockStreamOps_Expecter) ConnectPlaybackStream(streamPtr interface{}, format interface{}) *MockStreamOps_ConnectPlaybackStream_Call {
+	return &MockStreamOps_ConnectPlaybackStream_Call{Call: _e.mock.On("ConnectPlaybackStream", streamPtr, format)}
 }
 
-func (_c *MockStreamOps_ConnectPlaybackStream_Call) Run(run func(streamPtr unsafe.Pointer)) *MockStreamOps_ConnectPlaybackStream_Call {
+func (_c *MockStreamOps_ConnectPlaybackStream_Call) Run(run func(streamPtr unsafe.Pointer, format out.PlaybackFormat)) *MockStreamOps_ConnectPlaybackStream_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 unsafe.Pointer
 		if args[0] != nil {
 			arg0 = args[0].(unsafe.Pointer)
 		}
+		var arg1 out.PlaybackFormat
+		if args[1] != nil {
+			arg1 = args[1].(out.PlaybackFormat)
+		}
 		run(
 			arg0,
+			arg1,
 		)
 	})
 	return _c
@@ -83,7 +90,7 @@ func (_c *MockStreamOps_ConnectPlaybackStream_Call) Return(err error) *MockStrea
 	return _c
 }
 
-func (_c *MockStreamOps_ConnectPlaybackStream_Call) RunAndReturn(run func(streamPtr unsafe.Pointer) error) *MockStreamOps_ConnectPlaybackStream_Call {
+func (_c *MockStreamOps_ConnectPlaybackStream_Call) RunAndReturn(run func(streamPtr unsafe.Pointer, format out.PlaybackFormat) error) *MockStreamOps_ConnectPlaybackStream_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -493,9 +500,20 @@ func (_c *MockStreamOps_QuitMainLoop_Call) RunAndReturn(run func(loopPtr unsafe.
 }
 
 // RunMainLoop provides a mock function for the type MockStreamOps
-func (_mock *MockStreamOps) RunMainLoop(loopPtr unsafe.Pointer) {
-	_mock.Called(loopPtr)
-	return
+func (_mock *MockStreamOps) RunMainLoop(loopPtr unsafe.Pointer) error {
+	ret := _mock.Called(loopPtr)
+
+	if len(ret) == 0 {
+		panic("no return value specified for RunMainLoop")
+	}
+
+	var r0 error
+	if returnFunc, ok := ret.Get(0).(func(unsafe.Pointer) error); ok {
+		r0 = returnFunc(loopPtr)
+	} else {
+		r0 = ret.Error(0)
+	}
+	return r0
 }
 
 // MockStreamOps_RunMainLoop_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'RunMainLoop'
@@ -522,13 +540,13 @@ func (_c *MockStreamOps_RunMainLoop_Call) Run(run func(loopPtr unsafe.Pointer)) 
 	return _c
 }
 
-func (_c *MockStreamOps_RunMainLoop_Call) Return() *MockStreamOps_RunMainLoop_Call {
-	_c.Call.Return()
+func (_c *MockStreamOps_RunMainLoop_Call) Return(err error) *MockStreamOps_RunMainLoop_Call {
+	_c.Call.Return(err)
 	return _c
 }
 
-func (_c *MockStreamOps_RunMainLoop_Call) RunAndReturn(run func(loopPtr unsafe.Pointer)) *MockStreamOps_RunMainLoop_Call {
-	_c.Run(run)
+func (_c *MockStreamOps_RunMainLoop_Call) RunAndReturn(run func(loopPtr unsafe.Pointer) error) *MockStreamOps_RunMainLoop_Call {
+	_c.Call.Return(run)
 	return _c
 }
 
