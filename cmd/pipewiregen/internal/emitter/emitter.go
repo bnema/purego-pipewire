@@ -14,8 +14,10 @@ import (
 )
 
 var (
-	capiTmpl *template.Template
-	portTmpl *template.Template
+	capiTmpl      *template.Template
+	portTmpl      *template.Template
+	adapterTmpl   *template.Template
+	compositeTmpl *template.Template
 )
 
 func init() {
@@ -26,6 +28,14 @@ func init() {
 	portTmpl = template.Must(template.New("port").Funcs(template.FuncMap{
 		"title": titleCase,
 	}).Parse(portTemplate))
+
+	adapterTmpl = template.Must(template.New("adapter").Funcs(template.FuncMap{
+		"title": titleCase,
+	}).Parse(adapterTemplate))
+
+	compositeTmpl = template.Must(template.New("composite").Funcs(template.FuncMap{
+		"title": titleCase,
+	}).Parse(compositeTemplate))
 }
 
 // titleCase converts a string to title case (first letter uppercase, rest lowercase).
@@ -62,6 +72,21 @@ func Emit(m *model.Model, root string) (map[string][]byte, error) {
 		}
 		out[portPath] = portContent
 	}
+
+	// Generate adapters file
+	adapterContent, err := renderAdapters(m)
+	if err != nil {
+		return nil, fmt.Errorf("render adapters: %w", err)
+	}
+	out[filepath.Join("internal", "capi", "adapters_gen.go")] = adapterContent
+
+	// Generate composite port file
+	compositeContent, err := renderComposite(m)
+	if err != nil {
+		return nil, fmt.Errorf("render composite: %w", err)
+	}
+	out[filepath.Join("internal", "ports", "out", "capi_gen.go")] = compositeContent
+
 	return out, writeAll(root, out)
 }
 
@@ -85,37 +110,43 @@ func renderCAPI(group model.Group, symbols []model.Symbol, libraries []model.Lib
 		}
 	}
 
-	// Filter callbacks and event structs for stream_playback group
+	// Filter callbacks and event structs for this group
 	var groupCallbacks []model.Callback
 	var groupEventStructs []model.EventStruct
-	if group.Name == "stream_playback" {
-		groupCallbacks = callbacks
-		groupEventStructs = eventStructs
-		// Check if callbacks need unsafe
-		for _, cb := range callbacks {
-			if strings.Contains(cb.Signature, "unsafe.Pointer") {
-				needsUnsafe = true
-				break
-			}
+	for _, cb := range callbacks {
+		if cb.Group == group.Name {
+			groupCallbacks = append(groupCallbacks, cb)
+		}
+	}
+	for _, es := range eventStructs {
+		if es.Group == group.Name {
+			groupEventStructs = append(groupEventStructs, es)
+		}
+	}
+	// Check if callbacks need unsafe
+	for _, cb := range groupCallbacks {
+		if strings.Contains(cb.Signature, "unsafe.Pointer") {
+			needsUnsafe = true
+			break
 		}
 	}
 
 	data := struct {
-		Group            model.Group
-		Symbols          []model.Symbol
-		LibraryMap       map[string]string
-		NeedsUnsafe      bool
-		Callbacks        []model.Callback
-		EventStructs     []model.EventStruct
-		IsStreamPlayback bool
+		Group        model.Group
+		Symbols      []model.Symbol
+		LibraryMap   map[string]string
+		NeedsUnsafe  bool
+		Callbacks    []model.Callback
+		EventStructs []model.EventStruct
+		HasCallbacks bool
 	}{
-		Group:            group,
-		Symbols:          groupSymbols,
-		LibraryMap:       libMap,
-		NeedsUnsafe:      needsUnsafe,
-		Callbacks:        groupCallbacks,
-		EventStructs:     groupEventStructs,
-		IsStreamPlayback: group.Name == "stream_playback",
+		Group:        group,
+		Symbols:      groupSymbols,
+		LibraryMap:   libMap,
+		NeedsUnsafe:  needsUnsafe,
+		Callbacks:    groupCallbacks,
+		EventStructs: groupEventStructs,
+		HasCallbacks: len(groupCallbacks) > 0,
 	}
 
 	var buf bytes.Buffer
@@ -155,10 +186,12 @@ func renderPort(group model.Group, symbols []model.Symbol, eventStructs []model.
 		}
 	}
 
-	// Filter event structs for stream_playback group
+	// Filter event structs for this group
 	var groupEventStructs []model.EventStruct
-	if group.Name == "stream_playback" {
-		groupEventStructs = eventStructs
+	for _, es := range eventStructs {
+		if es.Group == group.Name {
+			groupEventStructs = append(groupEventStructs, es)
+		}
 	}
 
 	data := struct {
@@ -250,6 +283,100 @@ func toGoName(cName string) string {
 	return strings.Join(parts, "")
 }
 
+// toCamelCase converts a snake_case name like stream_playback to StreamPlayback.
+func toCamelCase(s string) string {
+	parts := strings.Split(s, "_")
+	for i, p := range parts {
+		parts[i] = titleCase(p)
+	}
+	return strings.Join(parts, "")
+}
+
+// renderAdapters generates one thin adapter struct per group with forwarding methods.
+func renderAdapters(m *model.Model) ([]byte, error) {
+	type AdapterMethod struct {
+		CName   string
+		GoName  string
+		Params  string
+		Results string
+	}
+
+	type AdapterGroup struct {
+		AdapterName string
+		Methods     []AdapterMethod
+	}
+
+	var groups []AdapterGroup
+	needsUnsafe := false
+	for _, group := range m.Groups {
+		groupSyms := filterSymbolsByGroup(m.Symbols, group.Name)
+		methods := make([]AdapterMethod, 0, len(groupSyms))
+
+		for _, sym := range groupSyms {
+			params, results := parseSignature(sym.Signature)
+			methods = append(methods, AdapterMethod{
+				CName:   sym.Name,
+				GoName:  toGoName(sym.Name),
+				Params:  params,
+				Results: results,
+			})
+			if strings.Contains(sym.Signature, "unsafe.Pointer") {
+				needsUnsafe = true
+			}
+		}
+
+		groups = append(groups, AdapterGroup{
+			AdapterName: toCamelCase(group.Name) + "CAPIAdapter",
+			Methods:     methods,
+		})
+	}
+
+	data := struct {
+		Groups      []AdapterGroup
+		NeedsUnsafe bool
+	}{
+		Groups:      groups,
+		NeedsUnsafe: needsUnsafe,
+	}
+
+	var buf bytes.Buffer
+	if err := adapterTmpl.Execute(&buf, data); err != nil {
+		return nil, fmt.Errorf("execute adapter template: %w", err)
+	}
+	return buf.Bytes(), nil
+}
+
+// renderComposite generates the composite CAPI interface that embeds all group interfaces.
+func renderComposite(m *model.Model) ([]byte, error) {
+	// Determine if any group uses unsafe.Pointer
+	needsUnsafe := false
+	for _, group := range m.Groups {
+		for _, sym := range filterSymbolsByGroup(m.Symbols, group.Name) {
+			if strings.Contains(sym.Signature, "unsafe.Pointer") {
+				needsUnsafe = true
+				break
+			}
+		}
+		if needsUnsafe {
+			break
+		}
+	}
+
+	data := struct {
+		Groups      []model.Group
+		NeedsUnsafe bool
+	}{
+		Groups:      m.Groups,
+		NeedsUnsafe: needsUnsafe,
+	}
+
+	var buf bytes.Buffer
+	if err := compositeTmpl.Execute(&buf, data); err != nil {
+		return nil, fmt.Errorf("execute composite template: %w", err)
+	}
+	return buf.Bytes(), nil
+}
+
 // writeAll writes all generated files to disk.
 func writeAll(root string, files map[string][]byte) error {
 	for path, content := range files {
@@ -277,7 +404,7 @@ import "unsafe"
 // {{.Name}}Func is the function type for {{.Name}}.
 type {{.Name}}Func {{.Signature}}
 {{end}}
-{{if .IsStreamPlayback}}
+{{if .HasCallbacks}}
 {{range .Callbacks}}
 // {{.Name}} represents the callback struct for {{.Name}}.
 type {{.Name}} {{.Signature}}
@@ -307,6 +434,41 @@ import "unsafe"
 type {{.Group.Interface}} interface {
 {{- range .Methods}}
 	{{.GoName}}{{.Params}}{{if .Results}} {{.Results}}{{end}}
+{{- end}}
+}
+`
+
+const adapterTemplate = `// Code generated by pipewiregen. DO NOT EDIT.
+
+package capi
+{{if .NeedsUnsafe}}
+import "unsafe"
+{{end}}
+{{range $group := .Groups}}
+// {{$group.AdapterName}} forwards calls to the generated CAPI variables.
+type {{$group.AdapterName}} struct{}
+{{range $group.Methods}}
+func (a *{{$group.AdapterName}}) {{.GoName}}{{.Params}}{{if .Results}} {{.Results}}{{end}} {
+{{- if .Results}}
+	return {{.CName}}{{.Params}}
+{{- else}}
+	{{.CName}}{{.Params}}
+{{- end}}
+}
+{{end}}
+{{end}}
+`
+
+const compositeTemplate = `// Code generated by pipewiregen. DO NOT EDIT.
+
+package out
+{{if .NeedsUnsafe}}
+import "unsafe"
+{{end}}
+// CAPI is the composite interface that embeds all generated group interfaces.
+type CAPI interface {
+{{- range .Groups}}
+	{{.Interface}}
 {{- end}}
 }
 `

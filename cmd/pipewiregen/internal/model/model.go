@@ -36,10 +36,12 @@ type Symbol struct {
 type Callback struct {
 	Name      string `json:"name"`
 	Signature string `json:"signature"`
+	Group     string `json:"group"`
 }
 
 // EventStruct represents an event struct with its associated callbacks.
 type EventStruct struct {
 	Name      string   `json:"name"`
 	Callbacks []string `json:"callbacks"`
+	Group     string   `json:"group"`
 }

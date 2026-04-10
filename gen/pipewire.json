@@ -25,9 +25,9 @@
     {"name": "pw_stream_destroy", "library": "pipewire", "group": "stream_playback", "signature": "func(stream unsafe.Pointer)"}
   ],
   "callbacks": [
-    {"name": "pw_stream_events", "signature": "struct{version uint32; process *func(stream unsafe.Pointer); param_changed *func(stream unsafe.Pointer, id uint32, param unsafe.Pointer); add_buffer *func(stream unsafe.Pointer, buffer unsafe.Pointer); remove_buffer *func(stream unsafe.Pointer, buffer unsafe.Pointer); flush *func(stream unsafe.Pointer, drain bool); drained *func(stream unsafe.Pointer); io_changed *func(stream unsafe.Pointer, id uint32, area unsafe.Pointer, size uint32)}"}
+    {"name": "pw_stream_events", "signature": "struct{version uint32; process *func(stream unsafe.Pointer); param_changed *func(stream unsafe.Pointer, id uint32, param unsafe.Pointer); add_buffer *func(stream unsafe.Pointer, buffer unsafe.Pointer); remove_buffer *func(stream unsafe.Pointer, buffer unsafe.Pointer); flush *func(stream unsafe.Pointer, drain bool); drained *func(stream unsafe.Pointer); io_changed *func(stream unsafe.Pointer, id uint32, area unsafe.Pointer, size uint32)}", "group": "stream_playback"}
   ],
   "event_structs": [
-    {"name": "pw_stream_events", "callbacks": ["process", "param_changed", "add_buffer", "remove_buffer", "flush", "drained", "io_changed"]}
+    {"name": "pw_stream_events", "callbacks": ["process", "param_changed", "add_buffer", "remove_buffer", "flush", "drained", "io_changed"], "group": "stream_playback"}
   ]
 }

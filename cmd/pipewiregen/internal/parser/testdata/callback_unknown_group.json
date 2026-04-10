@@ -1,0 +1,14 @@
+{
+  "libraries": [
+    {"name": "pipewire", "soname": "libpipewire-0.3.so.0"}
+  ],
+  "groups": [
+    {"name": "init", "interface": "InitAPI", "package": "out", "symbols": ["pw_init"]}
+  ],
+  "symbols": [
+    {"name": "pw_init", "library": "pipewire", "group": "init", "signature": "func()"}
+  ],
+  "callbacks": [
+    {"name": "pw_stream_events", "signature": "struct{}", "group": "nonexistent"}
+  ]
+}

@@ -151,3 +151,16 @@ func TestLoadEmptyEventStructNameReturnsError(t *testing.T) {
 		t.Fatalf("error message should mention event struct empty name, got: %v", err)
 	}
 }
+
+func TestLoadCallbackWithUnknownGroupReturnsError(t *testing.T) {
+	_, err := Load("testdata/callback_unknown_group.json")
+	if err == nil {
+		t.Fatal("expected error for callback with unknown group, got nil")
+	}
+	if !strings.Contains(err.Error(), "validation failed") {
+		t.Fatalf("error message should contain 'validation failed', got: %v", err)
+	}
+	if !strings.Contains(err.Error(), "unknown group") {
+		t.Fatalf("error message should contain 'unknown group', got: %v", err)
+	}
+}

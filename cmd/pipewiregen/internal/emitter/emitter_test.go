@@ -55,10 +55,10 @@ func testPlayerModel() *model.Model {
 			{Name: "pw_stream_add_listener", Library: "pipewire", Group: "stream_playback", Signature: "func(stream unsafe.Pointer, listener unsafe.Pointer, events unsafe.Pointer, data unsafe.Pointer) int32"},
 		},
 		Callbacks: []model.Callback{
-			{Name: "pw_stream_events", Signature: "struct{version uint32; process *func(stream unsafe.Pointer); param_changed *func(stream unsafe.Pointer, id uint32, param unsafe.Pointer); add_buffer *func(stream unsafe.Pointer, buffer unsafe.Pointer); remove_buffer *func(stream unsafe.Pointer, buffer unsafe.Pointer); flush *func(stream unsafe.Pointer, drain bool); drained *func(stream unsafe.Pointer); io_changed *func(stream unsafe.Pointer, id uint32, area unsafe.Pointer, size uint32)}"},
+			{Name: "pw_stream_events", Signature: "struct{version uint32; process *func(stream unsafe.Pointer); param_changed *func(stream unsafe.Pointer, id uint32, param unsafe.Pointer); add_buffer *func(stream unsafe.Pointer, buffer unsafe.Pointer); remove_buffer *func(stream unsafe.Pointer, buffer unsafe.Pointer); flush *func(stream unsafe.Pointer, drain bool); drained *func(stream unsafe.Pointer); io_changed *func(stream unsafe.Pointer, id uint32, area unsafe.Pointer, size uint32)}", Group: "stream_playback"},
 		},
 		EventStructs: []model.EventStruct{
-			{Name: "pw_stream_events", Callbacks: []string{"process", "param_changed", "add_buffer", "remove_buffer", "flush", "drained", "io_changed"}},
+			{Name: "pw_stream_events", Callbacks: []string{"process", "param_changed", "add_buffer", "remove_buffer", "flush", "drained", "io_changed"}, Group: "stream_playback"},
 		},
 	}
 }
@@ -98,6 +98,43 @@ func TestEmitWritesPlayerStreamFiles(t *testing.T) {
 	portContent := string(paths["internal/ports/out/stream_playback_gen.go"])
 	if !strings.Contains(portContent, "StreamPlaybackAPI") {
 		t.Fatalf("port output missing StreamPlaybackAPI interface")
+	}
+}
+
+func TestEmitWritesAdaptersAndCompositeFiles(t *testing.T) {
+	paths, err := Emit(testPlayerModel(), t.TempDir())
+	if err != nil {
+		t.Fatalf("Emit returned error: %v", err)
+	}
+
+	// Verify adapters file exists
+	adapterContent, ok := paths["internal/capi/adapters_gen.go"]
+	if !ok {
+		t.Fatal("missing adapters_gen.go output")
+	}
+
+	// Verify adapter contains streamPlaybackCAPIAdapter with PWStreamConnect method
+	adapterStr := string(adapterContent)
+	if !strings.Contains(adapterStr, "StreamPlaybackCAPIAdapter") {
+		t.Fatal("adapters output missing StreamPlaybackCAPIAdapter struct")
+	}
+	if !strings.Contains(adapterStr, "PWStreamConnect") {
+		t.Fatal("adapters output missing PWStreamConnect method")
+	}
+
+	// Verify composite port file exists
+	compositeContent, ok := paths["internal/ports/out/capi_gen.go"]
+	if !ok {
+		t.Fatal("missing capi_gen.go composite port output")
+	}
+
+	// Verify composite interface embeds StreamPlaybackAPI
+	compositeStr := string(compositeContent)
+	if !strings.Contains(compositeStr, "CAPI") {
+		t.Fatal("composite output missing CAPI type")
+	}
+	if !strings.Contains(compositeStr, "StreamPlaybackAPI") {
+		t.Fatal("composite output missing StreamPlaybackAPI embed")
 	}
 }
 

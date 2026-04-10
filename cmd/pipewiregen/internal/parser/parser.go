@@ -79,12 +79,24 @@ func validate(m *model.Model) error {
 		if cb.Signature == "" {
 			return fmt.Errorf("callback %q has empty signature", cb.Name)
 		}
+		if cb.Group == "" {
+			return fmt.Errorf("callback %q has empty group", cb.Name)
+		}
+		if !groupNames[cb.Group] {
+			return fmt.Errorf("callback %q references unknown group %q", cb.Name, cb.Group)
+		}
 	}
 
 	// Validate event structs
 	for i, es := range m.EventStructs {
 		if es.Name == "" {
 			return fmt.Errorf("event struct at index %d has empty name", i)
+		}
+		if es.Group == "" {
+			return fmt.Errorf("event struct %q has empty group", es.Name)
+		}
+		if !groupNames[es.Group] {
+			return fmt.Errorf("event struct %q references unknown group %q", es.Name, es.Group)
 		}
 	}
 
