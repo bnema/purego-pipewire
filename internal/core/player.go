@@ -2,10 +2,12 @@ package core
 
 import (
 	"errors"
+	"fmt"
 	"sync"
 	"sync/atomic"
 	"unsafe"
 
+	"github.com/bnema/purego-pipewire/internal/capi"
 	portout "github.com/bnema/purego-pipewire/internal/ports/out"
 )
 
@@ -100,9 +102,8 @@ func isValidTransition(current, next PlayerState) bool {
 	}
 }
 
-// Start begins playback, transitioning from Idle or Stopped to Playing
+// Start begins playback, transitioning from Idle or Stopped to Playing.
 func (p *player) Start() error {
-	// Check if player is in terminal state
 	current := p.State()
 	if current == PlayerStateClosed || current == PlayerStateClosing {
 		return ErrPlayerClosed
@@ -113,14 +114,36 @@ func (p *player) Start() error {
 		return ErrInvalidPlayerState
 	}
 
-	// Ensure runtime is available (placeholder)
+	// Ensure runtime is available
 	if err := p.ensureRuntime(); err != nil {
 		return err
 	}
 
-	// Transition to Starting then Playing
+	// Transition to Starting
 	if err := p.transition(PlayerStateStarting); err != nil {
 		return err
+	}
+
+	// Check if we already have PipeWire resources (restart after Stop)
+	p.mu.Lock()
+	hasResources := p.loopPtr != nil && p.streamPtr != nil
+	p.mu.Unlock()
+
+	if !hasResources {
+		// First start — create PipeWire resources
+		if err := p.startCreateResourcesAndActivate(); err != nil {
+			return err
+		}
+	} else {
+		// Restart — just reactivate existing stream
+		p.mu.Lock()
+		streamPtr := p.streamPtr
+		p.mu.Unlock()
+
+		if err := p.streamOps.SetStreamActive(streamPtr, true); err != nil {
+			p.transition(PlayerStateError)
+			return err
+		}
 	}
 
 	// Clear paused flag
@@ -128,6 +151,67 @@ func (p *player) Start() error {
 
 	// Transition to Playing
 	return p.transition(PlayerStatePlaying)
+}
+
+// startCreateResourcesAndActivate creates the main loop, playback stream, connects
+// and activates it, stores owned resources, and starts the main loop goroutine.
+// On failure, all created resources are destroyed and the state transitions to Error.
+// No owned pointers are left set on failure.
+func (p *player) startCreateResourcesAndActivate() error {
+	// Create main loop
+	loopPtr, err := p.streamOps.CreateMainLoop()
+	if err != nil {
+		p.transition(PlayerStateError)
+		return err
+	}
+
+	// Create playback stream
+	streamPtr, err := p.streamOps.CreatePlaybackStream(loopPtr, "purego-pipewire-player", p.onProcess)
+	if err != nil {
+		p.streamOps.DestroyMainLoop(loopPtr)
+		p.transition(PlayerStateError)
+		return err
+	}
+
+	// Connect stream
+	format := portout.PlaybackFormat{
+		SampleRate:      p.config.SampleRate,
+		Channels:        p.config.Channels,
+		FramesPerBuffer: p.config.FramesPerBuffer,
+	}
+	if err := p.streamOps.ConnectPlaybackStream(streamPtr, format); err != nil {
+		p.streamOps.DestroyStream(streamPtr)
+		p.streamOps.DestroyMainLoop(loopPtr)
+		p.transition(PlayerStateError)
+		return err
+	}
+
+	// Activate stream
+	if err := p.streamOps.SetStreamActive(streamPtr, true); err != nil {
+		// Best-effort disconnect before destroying
+		_ = p.streamOps.DisconnectStream(streamPtr)
+		p.streamOps.DestroyStream(streamPtr)
+		p.streamOps.DestroyMainLoop(loopPtr)
+		p.transition(PlayerStateError)
+		return err
+	}
+
+	// All steps succeeded — store owned resources
+	p.mu.Lock()
+	p.loopPtr = loopPtr
+	p.streamPtr = streamPtr
+	p.mu.Unlock()
+
+	// Start main loop in an internal goroutine
+	go func() {
+		if err := p.streamOps.RunMainLoop(loopPtr); err != nil {
+			if state := p.State(); state != PlayerStateClosing && state != PlayerStateClosed {
+				p.fail(err)
+			}
+		}
+	}()
+
+	return nil
 }
 
 // Pause temporarily pauses playback
@@ -193,9 +277,22 @@ func (p *player) Close() error {
 	return p.transition(PlayerStateClosed)
 }
 
-// ensureRuntime ensures the runtime is available (placeholder)
+// ensureRuntime ensures the player has a usable StreamOps implementation.
+// If streamOps is already set (e.g., by tests), it is used as-is.
+// Otherwise, PipeWire is registered via capi.Register() and the default
+// StreamOps implementation is obtained.
 func (p *player) ensureRuntime() error {
-	// Minimal placeholder - will be implemented in future tasks
+	if p.streamOps != nil {
+		return nil
+	}
+	if err := capi.Register(); err != nil {
+		return fmt.Errorf("register pipewire: %w", err)
+	}
+	ops := capi.DefaultStreamOps()
+	if ops == nil {
+		return errors.New("failed to obtain default stream operations")
+	}
+	p.streamOps = ops
 	return nil
 }
 

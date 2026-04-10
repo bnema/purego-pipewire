@@ -2,6 +2,7 @@ package core
 
 import (
 	"errors"
+	"fmt"
 	"io"
 )
 
@@ -151,5 +152,44 @@ func (p *player) fail(err error) {
 	p.transition(PlayerStateError)
 	if p.callbacks.OnError != nil {
 		p.callbacks.OnError(err)
+	}
+}
+
+// onProcess is the PipeWire process callback. It is invoked by PipeWire
+// each time the stream needs more audio data. It dequeues a buffer,
+// fills it with PCM data via processPCM, commits the result, and
+// queues the buffer back. If any step fails, it routes the error
+// through p.fail.
+func (p *player) onProcess() {
+	p.mu.Lock()
+	ops := p.streamOps
+	sp := p.streamPtr
+	p.mu.Unlock()
+
+	if ops == nil || sp == nil {
+		return
+	}
+
+	bufPtr := ops.DequeueBuffer(sp)
+	if bufPtr == nil {
+		return
+	}
+
+	view, err := newPWBufferView(bufPtr, p.config.Channels, p.config.FramesPerBuffer)
+	if err != nil {
+		p.fail(fmt.Errorf("buffer view: %w", err))
+		return
+	}
+
+	frames, err := p.processPCM(view.PCM())
+	if err != nil {
+		// processPCM error: do not queue the buffer; let existing
+		// state/error behavior stand.
+		return
+	}
+
+	view.Commit(frames)
+	if err := ops.QueueBuffer(sp, bufPtr); err != nil {
+		p.fail(fmt.Errorf("queue buffer: %w", err))
 	}
 }

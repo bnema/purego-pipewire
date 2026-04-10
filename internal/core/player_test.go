@@ -2,20 +2,91 @@ package core
 
 import (
 	"errors"
+	"sync"
 	"testing"
+	"time"
 	"unsafe"
 
+	portout "github.com/bnema/purego-pipewire/internal/ports/out"
 	"github.com/bnema/purego-pipewire/internal/ports/out/mocks"
+	"github.com/stretchr/testify/mock"
 )
 
+// defaultTestConfig returns a PlayerConfig suitable for tests that need
+// valid PipeWire format parameters.
+func defaultTestConfig() PlayerConfig {
+	return PlayerConfig{
+		SampleRate:      48000,
+		Channels:        2,
+		FramesPerBuffer: 256,
+	}
+}
+
+// expectStartWithSync sets up mock expectations for a first-time Start()
+// and returns a pointer to a WaitGroup that is signaled when RunMainLoop completes.
+// The caller must call waitOnMainLoop(t, wg) after Start() returns.
+func expectStartWithSync(mockOps *mocks.MockStreamOps, fakeLoop, fakeStream unsafe.Pointer, cfg PlayerConfig) *sync.WaitGroup {
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
+
+	mockOps.EXPECT().CreateMainLoop().Return(fakeLoop, nil)
+	mockOps.EXPECT().CreatePlaybackStream(fakeLoop, "purego-pipewire-player", mock.AnythingOfType("func()")).Return(fakeStream, nil)
+	mockOps.EXPECT().ConnectPlaybackStream(fakeStream, portout.PlaybackFormat{
+		SampleRate:      cfg.SampleRate,
+		Channels:        cfg.Channels,
+		FramesPerBuffer: cfg.FramesPerBuffer,
+	}).Return(nil)
+	mockOps.EXPECT().SetStreamActive(fakeStream, true).Return(nil)
+	mockOps.EXPECT().RunMainLoop(fakeLoop).RunAndReturn(func(unsafe.Pointer) error {
+		wg.Done()
+		return nil
+	})
+
+	return wg
+}
+
+// waitOnMainLoop waits for the RunMainLoop goroutine to finish, with a timeout.
+func waitOnMainLoop(t *testing.T, wg *sync.WaitGroup) {
+	t.Helper()
+	done := make(chan struct{})
+	go func() {
+		wg.Wait()
+		close(done)
+	}()
+	select {
+	case <-done:
+	case <-time.After(2 * time.Second):
+		t.Fatal("timed out waiting for RunMainLoop goroutine")
+	}
+}
+
 func TestPlayerStopIsRestartableButCloseIsTerminal(t *testing.T) {
-	p := newPlayer(PlayerConfig{}, PlayerCallbacks{})
+	mockOps := mocks.NewMockStreamOps(t)
+	fakeLoop := unsafe.Pointer(uintptr(0xBEEF))
+	fakeStream := unsafe.Pointer(uintptr(0xDEAD))
+	cfg := defaultTestConfig()
+
+	// First start creates resources
+	wg := expectStartWithSync(mockOps, fakeLoop, fakeStream, cfg)
+	// Stop deactivates the stream
+	mockOps.EXPECT().SetStreamActive(fakeStream, false).Return(nil)
+	// Restart reactivates existing stream
+	mockOps.EXPECT().SetStreamActive(fakeStream, true).Return(nil)
+	// Close tears down resources
+	mockOps.EXPECT().DisconnectStream(fakeStream).Return(nil)
+	mockOps.EXPECT().DestroyStream(fakeStream).Return()
+	mockOps.EXPECT().QuitMainLoop(fakeLoop).Return()
+	mockOps.EXPECT().DestroyMainLoop(fakeLoop).Return()
+
+	p := newPlayer(cfg, PlayerCallbacks{})
+	p.streamOps = mockOps
 
 	// Start from Stopped state should work
 	p.setState(PlayerStateStopped)
 	if err := p.Start(); err != nil {
 		t.Fatalf("Start from Stopped failed: %v", err)
 	}
+	waitOnMainLoop(t, wg)
 
 	// Should be in Playing state after Start
 	if p.State() != PlayerStatePlaying {
@@ -79,7 +150,15 @@ func TestPlayerStartFromClosingReturnsError(t *testing.T) {
 }
 
 func TestPlayerStartTransitionsThroughStartingToPlaying(t *testing.T) {
-	p := newPlayer(PlayerConfig{}, PlayerCallbacks{})
+	mockOps := mocks.NewMockStreamOps(t)
+	fakeLoop := unsafe.Pointer(uintptr(0xBEEF))
+	fakeStream := unsafe.Pointer(uintptr(0xDEAD))
+	cfg := defaultTestConfig()
+
+	wg := expectStartWithSync(mockOps, fakeLoop, fakeStream, cfg)
+
+	p := newPlayer(cfg, PlayerCallbacks{})
+	p.streamOps = mockOps
 
 	// Initial state should be Idle
 	if p.State() != PlayerStateIdle {
@@ -90,6 +169,7 @@ func TestPlayerStartTransitionsThroughStartingToPlaying(t *testing.T) {
 	if err := p.Start(); err != nil {
 		t.Fatalf("Start failed: %v", err)
 	}
+	waitOnMainLoop(t, wg)
 
 	if p.State() != PlayerStatePlaying {
 		t.Fatalf("expected Playing state after Start, got %v", p.State())
@@ -97,12 +177,21 @@ func TestPlayerStartTransitionsThroughStartingToPlaying(t *testing.T) {
 }
 
 func TestPlayerPauseTransitionsToPaused(t *testing.T) {
-	p := newPlayer(PlayerConfig{}, PlayerCallbacks{})
+	mockOps := mocks.NewMockStreamOps(t)
+	fakeLoop := unsafe.Pointer(uintptr(0xBEEF))
+	fakeStream := unsafe.Pointer(uintptr(0xDEAD))
+	cfg := defaultTestConfig()
+
+	wg := expectStartWithSync(mockOps, fakeLoop, fakeStream, cfg)
+
+	p := newPlayer(cfg, PlayerCallbacks{})
+	p.streamOps = mockOps
 
 	// Start first
 	if err := p.Start(); err != nil {
 		t.Fatalf("Start failed: %v", err)
 	}
+	waitOnMainLoop(t, wg)
 
 	// Pause should transition to Paused
 	if err := p.Pause(); err != nil {
@@ -115,12 +204,23 @@ func TestPlayerPauseTransitionsToPaused(t *testing.T) {
 }
 
 func TestPlayerStopClearsPausedState(t *testing.T) {
-	p := newPlayer(PlayerConfig{}, PlayerCallbacks{})
+	mockOps := mocks.NewMockStreamOps(t)
+	fakeLoop := unsafe.Pointer(uintptr(0xBEEF))
+	fakeStream := unsafe.Pointer(uintptr(0xDEAD))
+	cfg := defaultTestConfig()
+
+	wg := expectStartWithSync(mockOps, fakeLoop, fakeStream, cfg)
+	mockOps.EXPECT().SetStreamActive(fakeStream, false).Return(nil)
+
+	p := newPlayer(cfg, PlayerCallbacks{})
+	p.streamOps = mockOps
 
 	// Start then pause
 	if err := p.Start(); err != nil {
 		t.Fatalf("Start failed: %v", err)
 	}
+	waitOnMainLoop(t, wg)
+
 	if err := p.Pause(); err != nil {
 		t.Fatalf("Pause failed: %v", err)
 	}
@@ -139,12 +239,25 @@ func TestPlayerStopClearsPausedState(t *testing.T) {
 }
 
 func TestPlayerCloseIsIdempotent(t *testing.T) {
-	p := newPlayer(PlayerConfig{}, PlayerCallbacks{})
+	mockOps := mocks.NewMockStreamOps(t)
+	fakeLoop := unsafe.Pointer(uintptr(0xBEEF))
+	fakeStream := unsafe.Pointer(uintptr(0xDEAD))
+	cfg := defaultTestConfig()
+
+	wg := expectStartWithSync(mockOps, fakeLoop, fakeStream, cfg)
+	mockOps.EXPECT().DisconnectStream(fakeStream).Return(nil)
+	mockOps.EXPECT().DestroyStream(fakeStream).Return()
+	mockOps.EXPECT().QuitMainLoop(fakeLoop).Return()
+	mockOps.EXPECT().DestroyMainLoop(fakeLoop).Return()
+
+	p := newPlayer(cfg, PlayerCallbacks{})
+	p.streamOps = mockOps
 
 	// Start first
 	if err := p.Start(); err != nil {
 		t.Fatalf("Start failed: %v", err)
 	}
+	waitOnMainLoop(t, wg)
 
 	// Close should work
 	if err := p.Close(); err != nil {
@@ -167,18 +280,21 @@ func TestPlayerCloseIsIdempotent(t *testing.T) {
 // SetStreamActive(false) via StreamOps and transitions to Stopped.
 func TestPlayerStopDeactivatesStream(t *testing.T) {
 	mockOps := mocks.NewMockStreamOps(t)
-	fakeStream := unsafe.Pointer(uintptr(0x1234))
+	fakeLoop := unsafe.Pointer(uintptr(0x1234))
+	fakeStream := unsafe.Pointer(uintptr(0x5678))
+	cfg := defaultTestConfig()
 
+	wg := expectStartWithSync(mockOps, fakeLoop, fakeStream, cfg)
 	mockOps.EXPECT().SetStreamActive(fakeStream, false).Return(nil)
 
-	p := newPlayer(PlayerConfig{}, PlayerCallbacks{})
+	p := newPlayer(cfg, PlayerCallbacks{})
 	p.streamOps = mockOps
-	p.streamPtr = fakeStream
 
 	// Start the player
 	if err := p.Start(); err != nil {
 		t.Fatalf("Start failed: %v", err)
 	}
+	waitOnMainLoop(t, wg)
 	if p.State() != PlayerStatePlaying {
 		t.Fatalf("expected Playing state, got %v", p.State())
 	}
@@ -196,19 +312,22 @@ func TestPlayerStopDeactivatesStream(t *testing.T) {
 // SetStreamActive error and leaves the player in the pre-stop state.
 func TestPlayerStopReturnsDeactivateError(t *testing.T) {
 	mockOps := mocks.NewMockStreamOps(t)
-	fakeStream := unsafe.Pointer(uintptr(0x5678))
+	fakeLoop := unsafe.Pointer(uintptr(0x5678))
+	fakeStream := unsafe.Pointer(uintptr(0x9ABC))
 	deactivateErr := errors.New("deactivate failed")
+	cfg := defaultTestConfig()
 
+	wg := expectStartWithSync(mockOps, fakeLoop, fakeStream, cfg)
 	mockOps.EXPECT().SetStreamActive(fakeStream, false).Return(deactivateErr)
 
-	p := newPlayer(PlayerConfig{}, PlayerCallbacks{})
+	p := newPlayer(cfg, PlayerCallbacks{})
 	p.streamOps = mockOps
-	p.streamPtr = fakeStream
 
 	// Start the player
 	if err := p.Start(); err != nil {
 		t.Fatalf("Start failed: %v", err)
 	}
+	waitOnMainLoop(t, wg)
 	if p.State() != PlayerStatePlaying {
 		t.Fatalf("expected Playing state, got %v", p.State())
 	}
@@ -228,16 +347,20 @@ func TestPlayerStopReturnsDeactivateError(t *testing.T) {
 	}
 }
 
-// TestPlayerStopWithoutStreamOpsIsNoop verifies that Stop() works
-// when no StreamOps is configured (backward compat).
-func TestPlayerStopWithoutStreamOpsIsNoop(t *testing.T) {
-	p := newPlayer(PlayerConfig{}, PlayerCallbacks{})
+// TestPlayerStopWithNilStreamPtrIsNoop verifies that Stop() works
+// when streamOps is set but streamPtr is nil (backward compat).
+func TestPlayerStopWithNilStreamPtrIsNoop(t *testing.T) {
+	mockOps := mocks.NewMockStreamOps(t)
+	cfg := defaultTestConfig()
 
-	if err := p.Start(); err != nil {
-		t.Fatalf("Start failed: %v", err)
-	}
+	p := newPlayer(cfg, PlayerCallbacks{})
+	p.streamOps = mockOps
 
-	// Stop without StreamOps should succeed (deactivation is a no-op)
+	// Set state to Playing manually (without going through Start)
+	// to test Stop without an active stream pointer
+	p.setState(PlayerStatePlaying)
+
+	// Stop without a streamPtr should succeed (deactivation is a no-op)
 	if err := p.Stop(); err != nil {
 		t.Fatalf("Stop failed: %v", err)
 	}
