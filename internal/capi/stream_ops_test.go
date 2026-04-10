@@ -327,9 +327,9 @@ func TestConnectPlaybackStreamAcceptsValidFormat(t *testing.T) {
 	}
 }
 
-// TestRunMainLoopReturnsErrorOnNegativeReturn verifies that RunMainLoop
-// returns a PWError when pw_main_loop_run returns a negative value.
-func TestRunMainLoopReturnsErrorOnNegativeReturn(t *testing.T) {
+// TestRunMainLoopReturnsPWErrorOnNegativeReturn verifies that RunMainLoop
+// returns a typed PWError when pw_main_loop_run returns a negative value.
+func TestRunMainLoopReturnsPWErrorOnNegativeResult(t *testing.T) {
 	origRun := pw_main_loop_run
 	t.Cleanup(func() { pw_main_loop_run = origRun })
 
@@ -373,5 +373,126 @@ func TestRunMainLoopReturnsNilOnSuccess(t *testing.T) {
 	err := ops.RunMainLoop(fakeLoop)
 	if err != nil {
 		t.Fatalf("expected nil on success, got %v", err)
+	}
+}
+
+// TestCreatePlaybackStreamUsesPWLoopFromMainLoop verifies that CreatePlaybackStream
+// calls pw_main_loop_get_loop to obtain the pw_loop pointer and passes it to
+// pw_stream_new_simple (not the raw main loop pointer).
+func TestCreatePlaybackStreamUsesPWLoopFromMainLoop(t *testing.T) {
+	origGetLoop := pw_main_loop_get_loop
+	origNewSimple := pw_stream_new_simple
+	t.Cleanup(func() {
+		pw_main_loop_get_loop = origGetLoop
+		pw_stream_new_simple = origNewSimple
+	})
+
+	fakeMainLoop := unsafe.Pointer(uintptr(0xAAAA))
+	fakePWLoop := unsafe.Pointer(uintptr(0xBBBB))
+	var gotContext unsafe.Pointer
+
+	pw_main_loop_get_loop = func(loop unsafe.Pointer) unsafe.Pointer {
+		if loop != fakeMainLoop {
+			t.Errorf("pw_main_loop_get_loop received %v, want %v", loop, fakeMainLoop)
+		}
+		return fakePWLoop
+	}
+
+	pw_stream_new_simple = func(context unsafe.Pointer, name *byte, props unsafe.Pointer, events unsafe.Pointer, data unsafe.Pointer) unsafe.Pointer {
+		gotContext = context
+		// Return a non-nil fake stream pointer.
+		return unsafe.Pointer(uintptr(0xCCCC))
+	}
+
+	ops := &streamOpsImpl{
+		pinned: make(map[unsafe.Pointer]*streamCallbackStorage),
+	}
+
+	stream, err := ops.CreatePlaybackStream(fakeMainLoop, "test", func() {})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if stream == nil {
+		t.Fatal("expected non-nil stream pointer")
+	}
+	if gotContext != fakePWLoop {
+		t.Errorf("pw_stream_new_simple received context %v, want %v (the pw_loop from pw_main_loop_get_loop)", gotContext, fakePWLoop)
+	}
+}
+
+// TestCreatePlaybackStreamReturnsPWErrorWhenPWLoopIsNull verifies that
+// CreatePlaybackStream returns a typed PWError when pw_main_loop_get_loop
+// returns nil.
+func TestCreatePlaybackStreamReturnsPWErrorWhenPWLoopIsNull(t *testing.T) {
+	origGetLoop := pw_main_loop_get_loop
+	origNewSimple := pw_stream_new_simple
+	t.Cleanup(func() {
+		pw_main_loop_get_loop = origGetLoop
+		pw_stream_new_simple = origNewSimple
+	})
+
+	pw_main_loop_get_loop = func(loop unsafe.Pointer) unsafe.Pointer {
+		return nil
+	}
+
+	// pw_stream_new_simple should NOT be called.
+	pw_stream_new_simple = func(context unsafe.Pointer, name *byte, props unsafe.Pointer, events unsafe.Pointer, data unsafe.Pointer) unsafe.Pointer {
+		t.Fatal("pw_stream_new_simple should not be called when pw_main_loop_get_loop returns nil")
+		return nil
+	}
+
+	ops := &streamOpsImpl{
+		pinned: make(map[unsafe.Pointer]*streamCallbackStorage),
+	}
+
+	fakeMainLoop := unsafe.Pointer(uintptr(0xAAAA))
+	_, err := ops.CreatePlaybackStream(fakeMainLoop, "test", func() {})
+	if err == nil {
+		t.Fatal("expected error when pw_main_loop_get_loop returns nil")
+	}
+
+	var pwErr *PWError
+	if !errors.As(err, &pwErr) {
+		t.Fatalf("expected *PWError, got %T: %v", err, err)
+	}
+	if pwErr.Func != "pw_main_loop_get_loop" {
+		t.Errorf("expected Func='pw_main_loop_get_loop', got '%s'", pwErr.Func)
+	}
+}
+
+// TestConnectPlaybackStreamPassesParamsFromHelper verifies that ConnectPlaybackStream
+// calls buildRawAudioParams and passes the resulting non-nil params and nParams > 0
+// into pw_stream_connect.
+func TestConnectPlaybackStreamPassesParamsFromHelper(t *testing.T) {
+	origConnect := pw_stream_connect
+	t.Cleanup(func() { pw_stream_connect = origConnect })
+
+	var gotPorts unsafe.Pointer
+	var gotNPorts uint32
+
+	pw_stream_connect = func(stream unsafe.Pointer, direction int32, id uint32, flags uint32, ports unsafe.Pointer, n_ports uint32) int32 {
+		gotPorts = ports
+		gotNPorts = n_ports
+		return 0
+	}
+
+	ops := &streamOpsImpl{}
+	fakePtr := unsafe.Pointer(uintptr(0x5678))
+
+	validFmt := portout.PlaybackFormat{
+		SampleRate:      48000,
+		Channels:        2,
+		FramesPerBuffer: 1024,
+	}
+	err := ops.ConnectPlaybackStream(fakePtr, validFmt)
+	if err != nil {
+		t.Fatalf("expected nil error for valid format, got %v", err)
+	}
+
+	if gotPorts == nil {
+		t.Fatal("expected non-nil params pointer from buildRawAudioParams, got nil")
+	}
+	if gotNPorts == 0 {
+		t.Fatal("expected nParams > 0 from buildRawAudioParams, got 0")
 	}
 }

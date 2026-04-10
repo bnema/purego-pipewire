@@ -25,8 +25,9 @@ func (e *PWError) Error() string {
 var ErrInvalidPlaybackFormat = errors.New("invalid playback format")
 
 var (
-	errStreamCreate   = &PWError{Func: "pw_stream_new_simple", Code: 0}
-	errMainLoopCreate = &PWError{Func: "pw_main_loop_new", Code: 0}
+	errStreamCreate       = &PWError{Func: "pw_stream_new_simple", Code: 0}
+	errMainLoopCreate     = &PWError{Func: "pw_main_loop_new", Code: 0}
+	errPWLoopFromMainLoop = &PWError{Func: "pw_main_loop_get_loop", Code: 0}
 )
 
 const pwVersionStreamEvents = 2
@@ -57,6 +58,13 @@ type streamOpsImpl struct {
 var _ portout.StreamOps = (*streamOpsImpl)(nil)
 
 func (s *streamOpsImpl) CreatePlaybackStream(loopPtr unsafe.Pointer, name string, onProcess func()) (unsafe.Pointer, error) {
+	// Obtain the inner pw_loop from the main loop; pw_stream_new_simple
+	// expects a pw_loop, not a pw_main_loop.
+	pwLoop := pw_main_loop_get_loop(loopPtr)
+	if pwLoop == nil {
+		return nil, errPWLoopFromMainLoop
+	}
+
 	nameBytes := append([]byte(name), 0)
 
 	// Build persistent callback storage that outlives this function.
@@ -70,7 +78,7 @@ func (s *streamOpsImpl) CreatePlaybackStream(loopPtr unsafe.Pointer, name string
 	}
 
 	ptr := pw_stream_new_simple(
-		loopPtr,
+		pwLoop,
 		&nameBytes[0],
 		nil,                             // props
 		unsafe.Pointer(&storage.events), // events
@@ -93,17 +101,22 @@ func (s *streamOpsImpl) CreatePlaybackStream(loopPtr unsafe.Pointer, name string
 
 func (s *streamOpsImpl) ConnectPlaybackStream(streamPtr unsafe.Pointer, format portout.PlaybackFormat) error {
 	// Validate format before making the C call.
-	// NOTE: The format fields are not yet forwarded to PipeWire as SPA params.
-	// This validation is a temporary guard that will be superseded once SPA
-	// param building is wired in a subsequent task.
-	// Returns ErrInvalidPlaybackFormat (wrappable via errors.Is) for bad values.
+	// FramesPerBuffer is not used by buildRawAudioParams but is still required
+	// for a well-formed playback setup.
 	if format.SampleRate <= 0 || format.Channels <= 0 || format.FramesPerBuffer <= 0 {
 		return fmt.Errorf("%w: SampleRate=%d, Channels=%d, FramesPerBuffer=%d",
 			ErrInvalidPlaybackFormat, format.SampleRate, format.Channels, format.FramesPerBuffer)
 	}
+
+	// Build the SPA POD params that describe the stream's audio format.
+	cp, err := buildRawAudioParams(format)
+	if err != nil {
+		return err
+	}
+
 	// PW_DIRECTION_OUTPUT = 1, PW_ID_ANY = 0xffffffff
 	// PW_STREAM_FLAG_AUTOCONNECT | PW_STREAM_FLAG_MAP_BUFFERS = 0x01 | 0x04
-	ret := pw_stream_connect(streamPtr, pwDirectionOutput, pwIDAny, pwStreamFlagAutoConnectMapBuffers, nil, 0)
+	ret := pw_stream_connect(streamPtr, pwDirectionOutput, pwIDAny, pwStreamFlagAutoConnectMapBuffers, cp.Pointer(), cp.Count())
 	if ret < 0 {
 		return &PWError{Func: "pw_stream_connect", Code: ret}
 	}
