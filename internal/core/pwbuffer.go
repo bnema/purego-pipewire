@@ -2,6 +2,7 @@ package core
 
 import (
 	"errors"
+	"fmt"
 	"unsafe"
 )
 
@@ -58,6 +59,7 @@ var (
 	ErrNilBufferPointer = errors.New("nil buffer pointer")
 	ErrChannelMismatch  = errors.New("buffer data count does not match channels")
 	ErrUnmappedData     = errors.New("buffer data pointer is nil")
+	ErrFrameOverflow    = errors.New("requested frames exceed buffer capacity")
 )
 
 // newPWBufferView interprets bufPtr as a *pwBuffer and returns a view that
@@ -88,13 +90,12 @@ func newPWBufferView(bufPtr unsafe.Pointer, channels, frames int) (*pwBufferView
 		if data.Data == nil {
 			return nil, ErrUnmappedData
 		}
-		// Slice the raw memory as []float32 for this channel.
-		// Data.Maxsize gives the total buffer size in bytes for this channel.
-		nFloats := frames
-		if maxSize := int(data.Maxsize) / 4; nFloats > maxSize {
-			nFloats = maxSize
+		// Reject if the buffer cannot hold the requested number of frames.
+		maxFrames := int(data.Maxsize) / 4
+		if frames > maxFrames {
+			return nil, fmt.Errorf("%w: requested %d frames but buffer holds %d", ErrFrameOverflow, frames, maxFrames)
 		}
-		samples[i] = unsafe.Slice((*float32)(data.Data), nFloats)
+		samples[i] = unsafe.Slice((*float32)(data.Data), frames)
 	}
 
 	return &pwBufferView{
@@ -107,10 +108,12 @@ func newPWBufferView(bufPtr unsafe.Pointer, channels, frames int) (*pwBufferView
 
 // PCM returns a PCMBuffer pointing at the buffer's planar float32 data.
 // The caller can write into Samples and then call Commit.
+// Stride is set to 4 (bytes per float32 sample) for planar float32 layout.
 func (v *pwBufferView) PCM() *PCMBuffer {
 	return &PCMBuffer{
 		Frames:   v.frames,
 		Channels: v.channels,
+		Stride:   4, // sizeof(float32) — planar float32 byte stride per channel
 		Samples:  v.samples,
 	}
 }
