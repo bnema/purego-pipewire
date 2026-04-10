@@ -1,6 +1,5 @@
-// Temporary manual composition of the outbound CAPI interface.
-// This file bridges the gap until the generator emits a composite CAPI interface.
-// NOTE: The CAPI type is now generated in capi_gen.go — this file only holds
-// the narrative comment. The actual composite interface is capi_gen.go CAPI.
+// Package out defines outbound port interfaces for PipeWire bindings.
+// The CAPI composite interface and per-group interfaces are generated in
+// capi_gen.go, init_gen.go, loop_gen.go, and stream_playback_gen.go.
 
 package out

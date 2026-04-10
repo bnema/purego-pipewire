@@ -156,6 +156,57 @@ func (_c *MockCAPI_PWMainLoopDestroy_Call) RunAndReturn(run func(loop unsafe.Poi
 	return _c
 }
 
+// PWMainLoopGetLoop provides a mock function for the type MockCAPI
+func (_mock *MockCAPI) PWMainLoopGetLoop(loop unsafe.Pointer) unsafe.Pointer {
+	ret := _mock.Called(loop)
+
+	if len(ret) == 0 {
+		panic("no return value specified for PWMainLoopGetLoop")
+	}
+
+	var r0 unsafe.Pointer
+	if returnFunc, ok := ret.Get(0).(func(unsafe.Pointer) unsafe.Pointer); ok {
+		r0 = returnFunc(loop)
+	} else {
+		r0 = ret.Get(0).(unsafe.Pointer)
+	}
+	return r0
+}
+
+// MockCAPI_PWMainLoopGetLoop_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'PWMainLoopGetLoop'
+type MockCAPI_PWMainLoopGetLoop_Call struct {
+	*mock.Call
+}
+
+// PWMainLoopGetLoop is a helper method to define mock.On call
+//   - loop unsafe.Pointer
+func (_e *MockCAPI_Expecter) PWMainLoopGetLoop(loop interface{}) *MockCAPI_PWMainLoopGetLoop_Call {
+	return &MockCAPI_PWMainLoopGetLoop_Call{Call: _e.mock.On("PWMainLoopGetLoop", loop)}
+}
+
+func (_c *MockCAPI_PWMainLoopGetLoop_Call) Run(run func(loop unsafe.Pointer)) *MockCAPI_PWMainLoopGetLoop_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 unsafe.Pointer
+		if args[0] != nil {
+			arg0 = args[0].(unsafe.Pointer)
+		}
+		run(
+			arg0,
+		)
+	})
+	return _c
+}
+
+func (_c *MockCAPI_PWMainLoopGetLoop_Call) Return(v unsafe.Pointer) *MockCAPI_PWMainLoopGetLoop_Call {
+	_c.Call.Return(v)
+	return _c
+}
+
+func (_c *MockCAPI_PWMainLoopGetLoop_Call) RunAndReturn(run func(loop unsafe.Pointer) unsafe.Pointer) *MockCAPI_PWMainLoopGetLoop_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // PWMainLoopNew provides a mock function for the type MockCAPI
 func (_mock *MockCAPI) PWMainLoopNew(props unsafe.Pointer) unsafe.Pointer {
 	ret := _mock.Called(props)
@@ -305,6 +356,487 @@ func (_c *MockCAPI_PWMainLoopRun_Call) Return(n int32) *MockCAPI_PWMainLoopRun_C
 }
 
 func (_c *MockCAPI_PWMainLoopRun_Call) RunAndReturn(run func(loop unsafe.Pointer) int32) *MockCAPI_PWMainLoopRun_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// PWStreamAddListener provides a mock function for the type MockCAPI
+func (_mock *MockCAPI) PWStreamAddListener(stream unsafe.Pointer, listener unsafe.Pointer, events unsafe.Pointer, data unsafe.Pointer) int32 {
+	ret := _mock.Called(stream, listener, events, data)
+
+	if len(ret) == 0 {
+		panic("no return value specified for PWStreamAddListener")
+	}
+
+	var r0 int32
+	if returnFunc, ok := ret.Get(0).(func(unsafe.Pointer, unsafe.Pointer, unsafe.Pointer, unsafe.Pointer) int32); ok {
+		r0 = returnFunc(stream, listener, events, data)
+	} else {
+		r0 = ret.Get(0).(int32)
+	}
+	return r0
+}
+
+// MockCAPI_PWStreamAddListener_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'PWStreamAddListener'
+type MockCAPI_PWStreamAddListener_Call struct {
+	*mock.Call
+}
+
+// PWStreamAddListener is a helper method to define mock.On call
+//   - stream unsafe.Pointer
+//   - listener unsafe.Pointer
+//   - events unsafe.Pointer
+//   - data unsafe.Pointer
+func (_e *MockCAPI_Expecter) PWStreamAddListener(stream interface{}, listener interface{}, events interface{}, data interface{}) *MockCAPI_PWStreamAddListener_Call {
+	return &MockCAPI_PWStreamAddListener_Call{Call: _e.mock.On("PWStreamAddListener", stream, listener, events, data)}
+}
+
+func (_c *MockCAPI_PWStreamAddListener_Call) Run(run func(stream unsafe.Pointer, listener unsafe.Pointer, events unsafe.Pointer, data unsafe.Pointer)) *MockCAPI_PWStreamAddListener_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 unsafe.Pointer
+		if args[0] != nil {
+			arg0 = args[0].(unsafe.Pointer)
+		}
+		var arg1 unsafe.Pointer
+		if args[1] != nil {
+			arg1 = args[1].(unsafe.Pointer)
+		}
+		var arg2 unsafe.Pointer
+		if args[2] != nil {
+			arg2 = args[2].(unsafe.Pointer)
+		}
+		var arg3 unsafe.Pointer
+		if args[3] != nil {
+			arg3 = args[3].(unsafe.Pointer)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+			arg3,
+		)
+	})
+	return _c
+}
+
+func (_c *MockCAPI_PWStreamAddListener_Call) Return(n int32) *MockCAPI_PWStreamAddListener_Call {
+	_c.Call.Return(n)
+	return _c
+}
+
+func (_c *MockCAPI_PWStreamAddListener_Call) RunAndReturn(run func(stream unsafe.Pointer, listener unsafe.Pointer, events unsafe.Pointer, data unsafe.Pointer) int32) *MockCAPI_PWStreamAddListener_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// PWStreamConnect provides a mock function for the type MockCAPI
+func (_mock *MockCAPI) PWStreamConnect(stream unsafe.Pointer, direction int32, id uint32, flags uint32, ports unsafe.Pointer, n_ports uint32) int32 {
+	ret := _mock.Called(stream, direction, id, flags, ports, n_ports)
+
+	if len(ret) == 0 {
+		panic("no return value specified for PWStreamConnect")
+	}
+
+	var r0 int32
+	if returnFunc, ok := ret.Get(0).(func(unsafe.Pointer, int32, uint32, uint32, unsafe.Pointer, uint32) int32); ok {
+		r0 = returnFunc(stream, direction, id, flags, ports, n_ports)
+	} else {
+		r0 = ret.Get(0).(int32)
+	}
+	return r0
+}
+
+// MockCAPI_PWStreamConnect_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'PWStreamConnect'
+type MockCAPI_PWStreamConnect_Call struct {
+	*mock.Call
+}
+
+// PWStreamConnect is a helper method to define mock.On call
+//   - stream unsafe.Pointer
+//   - direction int32
+//   - id uint32
+//   - flags uint32
+//   - ports unsafe.Pointer
+//   - n_ports uint32
+func (_e *MockCAPI_Expecter) PWStreamConnect(stream interface{}, direction interface{}, id interface{}, flags interface{}, ports interface{}, n_ports interface{}) *MockCAPI_PWStreamConnect_Call {
+	return &MockCAPI_PWStreamConnect_Call{Call: _e.mock.On("PWStreamConnect", stream, direction, id, flags, ports, n_ports)}
+}
+
+func (_c *MockCAPI_PWStreamConnect_Call) Run(run func(stream unsafe.Pointer, direction int32, id uint32, flags uint32, ports unsafe.Pointer, n_ports uint32)) *MockCAPI_PWStreamConnect_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 unsafe.Pointer
+		if args[0] != nil {
+			arg0 = args[0].(unsafe.Pointer)
+		}
+		var arg1 int32
+		if args[1] != nil {
+			arg1 = args[1].(int32)
+		}
+		var arg2 uint32
+		if args[2] != nil {
+			arg2 = args[2].(uint32)
+		}
+		var arg3 uint32
+		if args[3] != nil {
+			arg3 = args[3].(uint32)
+		}
+		var arg4 unsafe.Pointer
+		if args[4] != nil {
+			arg4 = args[4].(unsafe.Pointer)
+		}
+		var arg5 uint32
+		if args[5] != nil {
+			arg5 = args[5].(uint32)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+			arg3,
+			arg4,
+			arg5,
+		)
+	})
+	return _c
+}
+
+func (_c *MockCAPI_PWStreamConnect_Call) Return(n int32) *MockCAPI_PWStreamConnect_Call {
+	_c.Call.Return(n)
+	return _c
+}
+
+func (_c *MockCAPI_PWStreamConnect_Call) RunAndReturn(run func(stream unsafe.Pointer, direction int32, id uint32, flags uint32, ports unsafe.Pointer, n_ports uint32) int32) *MockCAPI_PWStreamConnect_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// PWStreamDequeueBuffer provides a mock function for the type MockCAPI
+func (_mock *MockCAPI) PWStreamDequeueBuffer(stream unsafe.Pointer) unsafe.Pointer {
+	ret := _mock.Called(stream)
+
+	if len(ret) == 0 {
+		panic("no return value specified for PWStreamDequeueBuffer")
+	}
+
+	var r0 unsafe.Pointer
+	if returnFunc, ok := ret.Get(0).(func(unsafe.Pointer) unsafe.Pointer); ok {
+		r0 = returnFunc(stream)
+	} else {
+		r0 = ret.Get(0).(unsafe.Pointer)
+	}
+	return r0
+}
+
+// MockCAPI_PWStreamDequeueBuffer_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'PWStreamDequeueBuffer'
+type MockCAPI_PWStreamDequeueBuffer_Call struct {
+	*mock.Call
+}
+
+// PWStreamDequeueBuffer is a helper method to define mock.On call
+//   - stream unsafe.Pointer
+func (_e *MockCAPI_Expecter) PWStreamDequeueBuffer(stream interface{}) *MockCAPI_PWStreamDequeueBuffer_Call {
+	return &MockCAPI_PWStreamDequeueBuffer_Call{Call: _e.mock.On("PWStreamDequeueBuffer", stream)}
+}
+
+func (_c *MockCAPI_PWStreamDequeueBuffer_Call) Run(run func(stream unsafe.Pointer)) *MockCAPI_PWStreamDequeueBuffer_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 unsafe.Pointer
+		if args[0] != nil {
+			arg0 = args[0].(unsafe.Pointer)
+		}
+		run(
+			arg0,
+		)
+	})
+	return _c
+}
+
+func (_c *MockCAPI_PWStreamDequeueBuffer_Call) Return(v unsafe.Pointer) *MockCAPI_PWStreamDequeueBuffer_Call {
+	_c.Call.Return(v)
+	return _c
+}
+
+func (_c *MockCAPI_PWStreamDequeueBuffer_Call) RunAndReturn(run func(stream unsafe.Pointer) unsafe.Pointer) *MockCAPI_PWStreamDequeueBuffer_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// PWStreamDestroy provides a mock function for the type MockCAPI
+func (_mock *MockCAPI) PWStreamDestroy(stream unsafe.Pointer) {
+	_mock.Called(stream)
+	return
+}
+
+// MockCAPI_PWStreamDestroy_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'PWStreamDestroy'
+type MockCAPI_PWStreamDestroy_Call struct {
+	*mock.Call
+}
+
+// PWStreamDestroy is a helper method to define mock.On call
+//   - stream unsafe.Pointer
+func (_e *MockCAPI_Expecter) PWStreamDestroy(stream interface{}) *MockCAPI_PWStreamDestroy_Call {
+	return &MockCAPI_PWStreamDestroy_Call{Call: _e.mock.On("PWStreamDestroy", stream)}
+}
+
+func (_c *MockCAPI_PWStreamDestroy_Call) Run(run func(stream unsafe.Pointer)) *MockCAPI_PWStreamDestroy_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 unsafe.Pointer
+		if args[0] != nil {
+			arg0 = args[0].(unsafe.Pointer)
+		}
+		run(
+			arg0,
+		)
+	})
+	return _c
+}
+
+func (_c *MockCAPI_PWStreamDestroy_Call) Return() *MockCAPI_PWStreamDestroy_Call {
+	_c.Call.Return()
+	return _c
+}
+
+func (_c *MockCAPI_PWStreamDestroy_Call) RunAndReturn(run func(stream unsafe.Pointer)) *MockCAPI_PWStreamDestroy_Call {
+	_c.Run(run)
+	return _c
+}
+
+// PWStreamDisconnect provides a mock function for the type MockCAPI
+func (_mock *MockCAPI) PWStreamDisconnect(stream unsafe.Pointer) int32 {
+	ret := _mock.Called(stream)
+
+	if len(ret) == 0 {
+		panic("no return value specified for PWStreamDisconnect")
+	}
+
+	var r0 int32
+	if returnFunc, ok := ret.Get(0).(func(unsafe.Pointer) int32); ok {
+		r0 = returnFunc(stream)
+	} else {
+		r0 = ret.Get(0).(int32)
+	}
+	return r0
+}
+
+// MockCAPI_PWStreamDisconnect_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'PWStreamDisconnect'
+type MockCAPI_PWStreamDisconnect_Call struct {
+	*mock.Call
+}
+
+// PWStreamDisconnect is a helper method to define mock.On call
+//   - stream unsafe.Pointer
+func (_e *MockCAPI_Expecter) PWStreamDisconnect(stream interface{}) *MockCAPI_PWStreamDisconnect_Call {
+	return &MockCAPI_PWStreamDisconnect_Call{Call: _e.mock.On("PWStreamDisconnect", stream)}
+}
+
+func (_c *MockCAPI_PWStreamDisconnect_Call) Run(run func(stream unsafe.Pointer)) *MockCAPI_PWStreamDisconnect_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 unsafe.Pointer
+		if args[0] != nil {
+			arg0 = args[0].(unsafe.Pointer)
+		}
+		run(
+			arg0,
+		)
+	})
+	return _c
+}
+
+func (_c *MockCAPI_PWStreamDisconnect_Call) Return(n int32) *MockCAPI_PWStreamDisconnect_Call {
+	_c.Call.Return(n)
+	return _c
+}
+
+func (_c *MockCAPI_PWStreamDisconnect_Call) RunAndReturn(run func(stream unsafe.Pointer) int32) *MockCAPI_PWStreamDisconnect_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// PWStreamNewSimple provides a mock function for the type MockCAPI
+func (_mock *MockCAPI) PWStreamNewSimple(context unsafe.Pointer, name *byte, props unsafe.Pointer, events unsafe.Pointer, data unsafe.Pointer) unsafe.Pointer {
+	ret := _mock.Called(context, name, props, events, data)
+
+	if len(ret) == 0 {
+		panic("no return value specified for PWStreamNewSimple")
+	}
+
+	var r0 unsafe.Pointer
+	if returnFunc, ok := ret.Get(0).(func(unsafe.Pointer, *byte, unsafe.Pointer, unsafe.Pointer, unsafe.Pointer) unsafe.Pointer); ok {
+		r0 = returnFunc(context, name, props, events, data)
+	} else {
+		r0 = ret.Get(0).(unsafe.Pointer)
+	}
+	return r0
+}
+
+// MockCAPI_PWStreamNewSimple_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'PWStreamNewSimple'
+type MockCAPI_PWStreamNewSimple_Call struct {
+	*mock.Call
+}
+
+// PWStreamNewSimple is a helper method to define mock.On call
+//   - context unsafe.Pointer
+//   - name *byte
+//   - props unsafe.Pointer
+//   - events unsafe.Pointer
+//   - data unsafe.Pointer
+func (_e *MockCAPI_Expecter) PWStreamNewSimple(context interface{}, name interface{}, props interface{}, events interface{}, data interface{}) *MockCAPI_PWStreamNewSimple_Call {
+	return &MockCAPI_PWStreamNewSimple_Call{Call: _e.mock.On("PWStreamNewSimple", context, name, props, events, data)}
+}
+
+func (_c *MockCAPI_PWStreamNewSimple_Call) Run(run func(context unsafe.Pointer, name *byte, props unsafe.Pointer, events unsafe.Pointer, data unsafe.Pointer)) *MockCAPI_PWStreamNewSimple_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 unsafe.Pointer
+		if args[0] != nil {
+			arg0 = args[0].(unsafe.Pointer)
+		}
+		var arg1 *byte
+		if args[1] != nil {
+			arg1 = args[1].(*byte)
+		}
+		var arg2 unsafe.Pointer
+		if args[2] != nil {
+			arg2 = args[2].(unsafe.Pointer)
+		}
+		var arg3 unsafe.Pointer
+		if args[3] != nil {
+			arg3 = args[3].(unsafe.Pointer)
+		}
+		var arg4 unsafe.Pointer
+		if args[4] != nil {
+			arg4 = args[4].(unsafe.Pointer)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+			arg3,
+			arg4,
+		)
+	})
+	return _c
+}
+
+func (_c *MockCAPI_PWStreamNewSimple_Call) Return(v unsafe.Pointer) *MockCAPI_PWStreamNewSimple_Call {
+	_c.Call.Return(v)
+	return _c
+}
+
+func (_c *MockCAPI_PWStreamNewSimple_Call) RunAndReturn(run func(context unsafe.Pointer, name *byte, props unsafe.Pointer, events unsafe.Pointer, data unsafe.Pointer) unsafe.Pointer) *MockCAPI_PWStreamNewSimple_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// PWStreamQueueBuffer provides a mock function for the type MockCAPI
+func (_mock *MockCAPI) PWStreamQueueBuffer(stream unsafe.Pointer, buffer unsafe.Pointer) int32 {
+	ret := _mock.Called(stream, buffer)
+
+	if len(ret) == 0 {
+		panic("no return value specified for PWStreamQueueBuffer")
+	}
+
+	var r0 int32
+	if returnFunc, ok := ret.Get(0).(func(unsafe.Pointer, unsafe.Pointer) int32); ok {
+		r0 = returnFunc(stream, buffer)
+	} else {
+		r0 = ret.Get(0).(int32)
+	}
+	return r0
+}
+
+// MockCAPI_PWStreamQueueBuffer_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'PWStreamQueueBuffer'
+type MockCAPI_PWStreamQueueBuffer_Call struct {
+	*mock.Call
+}
+
+// PWStreamQueueBuffer is a helper method to define mock.On call
+//   - stream unsafe.Pointer
+//   - buffer unsafe.Pointer
+func (_e *MockCAPI_Expecter) PWStreamQueueBuffer(stream interface{}, buffer interface{}) *MockCAPI_PWStreamQueueBuffer_Call {
+	return &MockCAPI_PWStreamQueueBuffer_Call{Call: _e.mock.On("PWStreamQueueBuffer", stream, buffer)}
+}
+
+func (_c *MockCAPI_PWStreamQueueBuffer_Call) Run(run func(stream unsafe.Pointer, buffer unsafe.Pointer)) *MockCAPI_PWStreamQueueBuffer_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 unsafe.Pointer
+		if args[0] != nil {
+			arg0 = args[0].(unsafe.Pointer)
+		}
+		var arg1 unsafe.Pointer
+		if args[1] != nil {
+			arg1 = args[1].(unsafe.Pointer)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockCAPI_PWStreamQueueBuffer_Call) Return(n int32) *MockCAPI_PWStreamQueueBuffer_Call {
+	_c.Call.Return(n)
+	return _c
+}
+
+func (_c *MockCAPI_PWStreamQueueBuffer_Call) RunAndReturn(run func(stream unsafe.Pointer, buffer unsafe.Pointer) int32) *MockCAPI_PWStreamQueueBuffer_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// PWStreamSetActive provides a mock function for the type MockCAPI
+func (_mock *MockCAPI) PWStreamSetActive(stream unsafe.Pointer, active bool) int32 {
+	ret := _mock.Called(stream, active)
+
+	if len(ret) == 0 {
+		panic("no return value specified for PWStreamSetActive")
+	}
+
+	var r0 int32
+	if returnFunc, ok := ret.Get(0).(func(unsafe.Pointer, bool) int32); ok {
+		r0 = returnFunc(stream, active)
+	} else {
+		r0 = ret.Get(0).(int32)
+	}
+	return r0
+}
+
+// MockCAPI_PWStreamSetActive_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'PWStreamSetActive'
+type MockCAPI_PWStreamSetActive_Call struct {
+	*mock.Call
+}
+
+// PWStreamSetActive is a helper method to define mock.On call
+//   - stream unsafe.Pointer
+//   - active bool
+func (_e *MockCAPI_Expecter) PWStreamSetActive(stream interface{}, active interface{}) *MockCAPI_PWStreamSetActive_Call {
+	return &MockCAPI_PWStreamSetActive_Call{Call: _e.mock.On("PWStreamSetActive", stream, active)}
+}
+
+func (_c *MockCAPI_PWStreamSetActive_Call) Run(run func(stream unsafe.Pointer, active bool)) *MockCAPI_PWStreamSetActive_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 unsafe.Pointer
+		if args[0] != nil {
+			arg0 = args[0].(unsafe.Pointer)
+		}
+		var arg1 bool
+		if args[1] != nil {
+			arg1 = args[1].(bool)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockCAPI_PWStreamSetActive_Call) Return(n int32) *MockCAPI_PWStreamSetActive_Call {
+	_c.Call.Return(n)
+	return _c
+}
+
+func (_c *MockCAPI_PWStreamSetActive_Call) RunAndReturn(run func(stream unsafe.Pointer, active bool) int32) *MockCAPI_PWStreamSetActive_Call {
 	_c.Call.Return(run)
 	return _c
 }

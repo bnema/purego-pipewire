@@ -5,7 +5,7 @@
   ],
   "groups": [
     {"name": "init", "interface": "InitAPI", "package": "out", "symbols": ["pw_init", "pw_deinit"]},
-    {"name": "loop", "interface": "LoopAPI", "package": "out", "symbols": ["pw_main_loop_new", "pw_main_loop_destroy", "pw_main_loop_run", "pw_main_loop_quit"]},
+    {"name": "loop", "interface": "LoopAPI", "package": "out", "symbols": ["pw_main_loop_new", "pw_main_loop_destroy", "pw_main_loop_run", "pw_main_loop_quit", "pw_main_loop_get_loop"]},
     {"name": "stream_playback", "interface": "StreamPlaybackAPI", "package": "out", "symbols": ["pw_stream_new_simple", "pw_stream_connect", "pw_stream_set_active", "pw_stream_disconnect", "pw_stream_dequeue_buffer", "pw_stream_queue_buffer", "pw_stream_add_listener", "pw_stream_destroy"]}
   ],
   "symbols": [
@@ -15,6 +15,7 @@
     {"name": "pw_main_loop_destroy", "library": "pipewire", "group": "loop", "signature": "func(loop unsafe.Pointer)"},
     {"name": "pw_main_loop_run", "library": "pipewire", "group": "loop", "signature": "func(loop unsafe.Pointer) int32"},
     {"name": "pw_main_loop_quit", "library": "pipewire", "group": "loop", "signature": "func(loop unsafe.Pointer) int32"},
+    {"name": "pw_main_loop_get_loop", "library": "pipewire", "group": "loop", "signature": "func(loop unsafe.Pointer) unsafe.Pointer"},
     {"name": "pw_stream_new_simple", "library": "pipewire", "group": "stream_playback", "signature": "func(context unsafe.Pointer, name *byte, props unsafe.Pointer, events unsafe.Pointer, data unsafe.Pointer) unsafe.Pointer"},
     {"name": "pw_stream_connect", "library": "pipewire", "group": "stream_playback", "signature": "func(stream unsafe.Pointer, direction int32, id uint32, flags uint32, ports unsafe.Pointer, n_ports uint32) int32"},
     {"name": "pw_stream_set_active", "library": "pipewire", "group": "stream_playback", "signature": "func(stream unsafe.Pointer, active bool) int32"},

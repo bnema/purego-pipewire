@@ -170,6 +170,7 @@ func testCleanupModel() *model.Model {
 					"pw_main_loop_destroy",
 					"pw_main_loop_run",
 					"pw_main_loop_quit",
+					"pw_main_loop_get_loop",
 				},
 			},
 			{
@@ -194,6 +195,7 @@ func testCleanupModel() *model.Model {
 			{Name: "pw_main_loop_destroy", Library: "pipewire", Group: "loop", Signature: "func(loop unsafe.Pointer)"},
 			{Name: "pw_main_loop_run", Library: "pipewire", Group: "loop", Signature: "func(loop unsafe.Pointer) int32"},
 			{Name: "pw_main_loop_quit", Library: "pipewire", Group: "loop", Signature: "func(loop unsafe.Pointer) int32"},
+			{Name: "pw_main_loop_get_loop", Library: "pipewire", Group: "loop", Signature: "func(loop unsafe.Pointer) unsafe.Pointer"},
 			// Stream playback symbols
 			{Name: "pw_stream_new_simple", Library: "pipewire", Group: "stream_playback", Signature: "func(context unsafe.Pointer, name *byte, props unsafe.Pointer, events unsafe.Pointer, data unsafe.Pointer) unsafe.Pointer"},
 			{Name: "pw_stream_connect", Library: "pipewire", Group: "stream_playback", Signature: "func(stream unsafe.Pointer, direction int32, id uint32, flags uint32, ports unsafe.Pointer, n_ports uint32) int32"},
@@ -237,6 +239,18 @@ func TestEmitGeneratesCleanupBindings(t *testing.T) {
 		}
 
 		assertCleanupBindings(t, paths)
+
+		// Verify composite port embeds StreamPlaybackAPI
+		compositeContent := string(paths["internal/ports/out/capi_gen.go"])
+		if !strings.Contains(compositeContent, "StreamPlaybackAPI") {
+			t.Fatal("checked-in model: composite output missing StreamPlaybackAPI embed")
+		}
+
+		// Verify loop port contains PWMainLoopGetLoop
+		loopPortContent := string(paths["internal/ports/out/loop_gen.go"])
+		if !strings.Contains(loopPortContent, "PWMainLoopGetLoop(loop unsafe.Pointer) unsafe.Pointer") {
+			t.Fatal("checked-in model: loop port output missing PWMainLoopGetLoop method")
+		}
 	})
 }
 
@@ -255,10 +269,23 @@ func assertCleanupBindings(t *testing.T, paths map[string][]byte) {
 		t.Fatalf("capi loop output missing pw_main_loop_quit registration")
 	}
 
+	// Verify loop_gen.go contains pw_main_loop_get_loop
+	if !strings.Contains(loopCapiContent, "pw_main_loop_get_loop") {
+		t.Fatalf("capi loop output missing pw_main_loop_get_loop binding")
+	}
+	if !strings.Contains(loopCapiContent, "pw_main_loop_get_loopFunc") {
+		t.Fatalf("capi loop output missing pw_main_loop_get_loopFunc type")
+	}
+
 	// Verify loop port interface contains PWMainLoopQuit
 	loopPortContent := string(paths["internal/ports/out/loop_gen.go"])
 	if !strings.Contains(loopPortContent, "PWMainLoopQuit(loop unsafe.Pointer) int32") {
 		t.Fatalf("port loop output missing PWMainLoopQuit method")
+	}
+
+	// Verify loop port interface contains PWMainLoopGetLoop
+	if !strings.Contains(loopPortContent, "PWMainLoopGetLoop(loop unsafe.Pointer) unsafe.Pointer") {
+		t.Fatalf("port loop output missing PWMainLoopGetLoop method")
 	}
 
 	// Verify stream_playback_gen.go contains pw_stream_destroy

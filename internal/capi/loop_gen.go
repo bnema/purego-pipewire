@@ -19,6 +19,9 @@ type pw_main_loop_runFunc func(loop unsafe.Pointer) int32
 // pw_main_loop_quitFunc is the function type for pw_main_loop_quit.
 type pw_main_loop_quitFunc func(loop unsafe.Pointer) int32
 
+// pw_main_loop_get_loopFunc is the function type for pw_main_loop_get_loop.
+type pw_main_loop_get_loopFunc func(loop unsafe.Pointer) unsafe.Pointer
+
 
 
 var (
@@ -31,6 +34,8 @@ var (
 
 	pw_main_loop_quit pw_main_loop_quitFunc
 
+	pw_main_loop_get_loop pw_main_loop_get_loopFunc
+
 )
 
 func registerLoop(handle uintptr) {
@@ -42,5 +47,7 @@ func registerLoop(handle uintptr) {
 	purego.RegisterLibFunc(&pw_main_loop_run, handle, "pw_main_loop_run")
 
 	purego.RegisterLibFunc(&pw_main_loop_quit, handle, "pw_main_loop_quit")
+
+	purego.RegisterLibFunc(&pw_main_loop_get_loop, handle, "pw_main_loop_get_loop")
 
 }

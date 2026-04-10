@@ -10,4 +10,5 @@ type LoopAPI interface {
 	PWMainLoopDestroy(loop unsafe.Pointer)
 	PWMainLoopRun(loop unsafe.Pointer) int32
 	PWMainLoopQuit(loop unsafe.Pointer) int32
+	PWMainLoopGetLoop(loop unsafe.Pointer) unsafe.Pointer
 }

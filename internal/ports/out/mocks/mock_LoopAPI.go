@@ -77,6 +77,57 @@ func (_c *MockLoopAPI_PWMainLoopDestroy_Call) RunAndReturn(run func(loop unsafe.
 	return _c
 }
 
+// PWMainLoopGetLoop provides a mock function for the type MockLoopAPI
+func (_mock *MockLoopAPI) PWMainLoopGetLoop(loop unsafe.Pointer) unsafe.Pointer {
+	ret := _mock.Called(loop)
+
+	if len(ret) == 0 {
+		panic("no return value specified for PWMainLoopGetLoop")
+	}
+
+	var r0 unsafe.Pointer
+	if returnFunc, ok := ret.Get(0).(func(unsafe.Pointer) unsafe.Pointer); ok {
+		r0 = returnFunc(loop)
+	} else {
+		r0 = ret.Get(0).(unsafe.Pointer)
+	}
+	return r0
+}
+
+// MockLoopAPI_PWMainLoopGetLoop_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'PWMainLoopGetLoop'
+type MockLoopAPI_PWMainLoopGetLoop_Call struct {
+	*mock.Call
+}
+
+// PWMainLoopGetLoop is a helper method to define mock.On call
+//   - loop unsafe.Pointer
+func (_e *MockLoopAPI_Expecter) PWMainLoopGetLoop(loop interface{}) *MockLoopAPI_PWMainLoopGetLoop_Call {
+	return &MockLoopAPI_PWMainLoopGetLoop_Call{Call: _e.mock.On("PWMainLoopGetLoop", loop)}
+}
+
+func (_c *MockLoopAPI_PWMainLoopGetLoop_Call) Run(run func(loop unsafe.Pointer)) *MockLoopAPI_PWMainLoopGetLoop_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 unsafe.Pointer
+		if args[0] != nil {
+			arg0 = args[0].(unsafe.Pointer)
+		}
+		run(
+			arg0,
+		)
+	})
+	return _c
+}
+
+func (_c *MockLoopAPI_PWMainLoopGetLoop_Call) Return(v unsafe.Pointer) *MockLoopAPI_PWMainLoopGetLoop_Call {
+	_c.Call.Return(v)
+	return _c
+}
+
+func (_c *MockLoopAPI_PWMainLoopGetLoop_Call) RunAndReturn(run func(loop unsafe.Pointer) unsafe.Pointer) *MockLoopAPI_PWMainLoopGetLoop_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // PWMainLoopNew provides a mock function for the type MockLoopAPI
 func (_mock *MockLoopAPI) PWMainLoopNew(props unsafe.Pointer) unsafe.Pointer {
 	ret := _mock.Called(props)
