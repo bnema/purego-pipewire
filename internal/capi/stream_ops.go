@@ -1,7 +1,6 @@
 package capi
 
 import (
-	"errors"
 	"fmt"
 	"sync"
 	"unsafe"
@@ -9,10 +8,20 @@ import (
 	portout "github.com/bnema/purego-pipewire/internal/ports/out"
 )
 
+// PWError represents a PipeWire C API error with the function name and return code.
+type PWError struct {
+	Func string
+	Code int32
+}
+
+func (e *PWError) Error() string {
+	return fmt.Sprintf("%s failed: %d", e.Func, e.Code)
+}
+
 var (
-	errStreamCreate   = errors.New("pw_stream_new_simple returned nil")
-	errStreamConnect  = errors.New("pw_stream_connect failed")
-	errMainLoopCreate = errors.New("pw_main_loop_new returned nil")
+	errStreamCreate   = &PWError{Func: "pw_stream_new_simple", Code: 0}
+	errStreamConnect  = &PWError{Func: "pw_stream_connect", Code: 0}
+	errMainLoopCreate = &PWError{Func: "pw_main_loop_new", Code: 0}
 )
 
 const pwVersionStreamEvents = 2
@@ -82,7 +91,7 @@ func (s *streamOpsImpl) ConnectPlaybackStream(streamPtr unsafe.Pointer) error {
 	// PW_STREAM_FLAG_AUTOCONNECT | PW_STREAM_FLAG_MAP_BUFFERS = 0x01 | 0x04
 	ret := pw_stream_connect(streamPtr, pwDirectionOutput, pwIDAny, pwStreamFlagAutoConnectMapBuffers, nil, 0)
 	if ret < 0 {
-		return errStreamConnect
+		return &PWError{Func: "pw_stream_connect", Code: ret}
 	}
 	return nil
 }
@@ -90,7 +99,7 @@ func (s *streamOpsImpl) ConnectPlaybackStream(streamPtr unsafe.Pointer) error {
 func (s *streamOpsImpl) SetStreamActive(streamPtr unsafe.Pointer, active bool) error {
 	ret := pw_stream_set_active(streamPtr, active)
 	if ret < 0 {
-		return fmt.Errorf("pw_stream_set_active failed: %d", ret)
+		return &PWError{Func: "pw_stream_set_active", Code: ret}
 	}
 	return nil
 }
@@ -102,15 +111,19 @@ func (s *streamOpsImpl) DequeueBuffer(streamPtr unsafe.Pointer) unsafe.Pointer {
 func (s *streamOpsImpl) QueueBuffer(streamPtr unsafe.Pointer, bufPtr unsafe.Pointer) error {
 	ret := pw_stream_queue_buffer(streamPtr, bufPtr)
 	if ret < 0 {
-		return fmt.Errorf("pw_stream_queue_buffer failed: %d", ret)
+		return &PWError{Func: "pw_stream_queue_buffer", Code: ret}
 	}
 	return nil
 }
 
-// DisconnectStream intentionally ignores the PipeWire return code.
-// Close-path cleanup is best-effort here, and destroy is the definitive release.
-func (s *streamOpsImpl) DisconnectStream(streamPtr unsafe.Pointer) {
-	pw_stream_disconnect(streamPtr)
+// DisconnectStream disconnects the stream from its port.
+// Returns a PWError if the operation fails.
+func (s *streamOpsImpl) DisconnectStream(streamPtr unsafe.Pointer) error {
+	ret := pw_stream_disconnect(streamPtr)
+	if ret < 0 {
+		return &PWError{Func: "pw_stream_disconnect", Code: ret}
+	}
+	return nil
 }
 
 func (s *streamOpsImpl) DestroyStream(streamPtr unsafe.Pointer) {

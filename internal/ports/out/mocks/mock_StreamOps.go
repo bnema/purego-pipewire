@@ -345,9 +345,20 @@ func (_c *MockStreamOps_DestroyStream_Call) RunAndReturn(run func(streamPtr unsa
 }
 
 // DisconnectStream provides a mock function for the type MockStreamOps
-func (_mock *MockStreamOps) DisconnectStream(streamPtr unsafe.Pointer) {
-	_mock.Called(streamPtr)
-	return
+func (_mock *MockStreamOps) DisconnectStream(streamPtr unsafe.Pointer) error {
+	ret := _mock.Called(streamPtr)
+
+	if len(ret) == 0 {
+		panic("no return value specified for DisconnectStream")
+	}
+
+	var r0 error
+	if returnFunc, ok := ret.Get(0).(func(unsafe.Pointer) error); ok {
+		r0 = returnFunc(streamPtr)
+	} else {
+		r0 = ret.Error(0)
+	}
+	return r0
 }
 
 // MockStreamOps_DisconnectStream_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DisconnectStream'
@@ -374,13 +385,13 @@ func (_c *MockStreamOps_DisconnectStream_Call) Run(run func(streamPtr unsafe.Poi
 	return _c
 }
 
-func (_c *MockStreamOps_DisconnectStream_Call) Return() *MockStreamOps_DisconnectStream_Call {
-	_c.Call.Return()
+func (_c *MockStreamOps_DisconnectStream_Call) Return(err error) *MockStreamOps_DisconnectStream_Call {
+	_c.Call.Return(err)
 	return _c
 }
 
-func (_c *MockStreamOps_DisconnectStream_Call) RunAndReturn(run func(streamPtr unsafe.Pointer)) *MockStreamOps_DisconnectStream_Call {
-	_c.Run(run)
+func (_c *MockStreamOps_DisconnectStream_Call) RunAndReturn(run func(streamPtr unsafe.Pointer) error) *MockStreamOps_DisconnectStream_Call {
+	_c.Call.Return(run)
 	return _c
 }
 

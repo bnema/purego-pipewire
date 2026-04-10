@@ -25,7 +25,8 @@ type StreamOps interface {
 	QueueBuffer(streamPtr unsafe.Pointer, bufPtr unsafe.Pointer) error
 
 	// DisconnectStream disconnects the stream.
-	DisconnectStream(streamPtr unsafe.Pointer)
+	// Returns an error if the operation fails.
+	DisconnectStream(streamPtr unsafe.Pointer) error
 
 	// DestroyStream destroys the stream and frees its resources.
 	DestroyStream(streamPtr unsafe.Pointer)

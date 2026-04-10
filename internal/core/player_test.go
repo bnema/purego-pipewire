@@ -247,14 +247,15 @@ func TestPlayerStopWithoutStreamOpsIsNoop(t *testing.T) {
 }
 
 // TestPlayerCloseTeardownCallsStreamOps verifies that Close() calls
-// DestroyStream, QuitMainLoop, and DestroyMainLoop through StreamOps
+// DisconnectStream, DestroyStream, QuitMainLoop, and DestroyMainLoop through StreamOps
 // when the corresponding pointers are set.
 func TestPlayerCloseTeardownCallsStreamOps(t *testing.T) {
 	mockOps := mocks.NewMockStreamOps(t)
 	fakeStream := unsafe.Pointer(uintptr(0xAAAA))
 	fakeLoop := unsafe.Pointer(uintptr(0xBBBB))
 
-	// Expect teardown calls in order: DestroyStream, QuitMainLoop, DestroyMainLoop.
+	// Expect teardown calls in order: DisconnectStream, DestroyStream, QuitMainLoop, DestroyMainLoop.
+	mockOps.EXPECT().DisconnectStream(fakeStream).Return(nil)
 	mockOps.EXPECT().DestroyStream(fakeStream).Return()
 	mockOps.EXPECT().QuitMainLoop(fakeLoop).Return()
 	mockOps.EXPECT().DestroyMainLoop(fakeLoop).Return()
@@ -306,6 +307,7 @@ func TestPlayerRepeatedCloseIsSafe(t *testing.T) {
 	fakeLoop := unsafe.Pointer(uintptr(0xDDDD))
 
 	// Only expect one set of teardown calls.
+	mockOps.EXPECT().DisconnectStream(fakeStream).Return(nil)
 	mockOps.EXPECT().DestroyStream(fakeStream).Return()
 	mockOps.EXPECT().QuitMainLoop(fakeLoop).Return()
 	mockOps.EXPECT().DestroyMainLoop(fakeLoop).Return()
@@ -332,6 +334,7 @@ func TestPlayerTeardownWithOnlyStreamPtr(t *testing.T) {
 	mockOps := mocks.NewMockStreamOps(t)
 	fakeStream := unsafe.Pointer(uintptr(0xEEEE))
 
+	mockOps.EXPECT().DisconnectStream(fakeStream).Return(nil)
 	mockOps.EXPECT().DestroyStream(fakeStream).Return()
 
 	p := newPlayer(PlayerConfig{}, PlayerCallbacks{})
@@ -366,5 +369,55 @@ func TestPlayerTeardownWithOnlyLoopPtr(t *testing.T) {
 	}
 	if p.loopPtr != nil {
 		t.Error("expected loopPtr to be nil after teardown")
+	}
+}
+
+// TestPlayerTeardownCallsDisconnectStream verifies that teardown calls
+// DisconnectStream before DestroyStream when a stream exists.
+func TestPlayerTeardownCallsDisconnectStream(t *testing.T) {
+	mockOps := mocks.NewMockStreamOps(t)
+	fakeStream := unsafe.Pointer(uintptr(0xAAAA))
+	fakeLoop := unsafe.Pointer(uintptr(0xBBBB))
+
+	// Expect disconnect before destroy
+	mockOps.EXPECT().DisconnectStream(fakeStream).Return(nil)
+	mockOps.EXPECT().DestroyStream(fakeStream).Return()
+	mockOps.EXPECT().QuitMainLoop(fakeLoop).Return()
+	mockOps.EXPECT().DestroyMainLoop(fakeLoop).Return()
+
+	p := newPlayer(PlayerConfig{}, PlayerCallbacks{})
+	p.streamOps = mockOps
+	p.streamPtr = fakeStream
+	p.loopPtr = fakeLoop
+	p.setState(PlayerStatePlaying)
+
+	if err := p.Close(); err != nil {
+		t.Fatalf("Close failed: %v", err)
+	}
+}
+
+// TestPlayerTeardownContinuesOnDisconnectError verifies that teardown
+// continues cleanup even if DisconnectStream returns an error.
+func TestPlayerTeardownContinuesOnDisconnectError(t *testing.T) {
+	mockOps := mocks.NewMockStreamOps(t)
+	fakeStream := unsafe.Pointer(uintptr(0xCCCC))
+	fakeLoop := unsafe.Pointer(uintptr(0xDDDD))
+	disconnectErr := errors.New("disconnect failed")
+
+	// Disconnect fails, but destroy should still be called
+	mockOps.EXPECT().DisconnectStream(fakeStream).Return(disconnectErr)
+	mockOps.EXPECT().DestroyStream(fakeStream).Return()
+	mockOps.EXPECT().QuitMainLoop(fakeLoop).Return()
+	mockOps.EXPECT().DestroyMainLoop(fakeLoop).Return()
+
+	p := newPlayer(PlayerConfig{}, PlayerCallbacks{})
+	p.streamOps = mockOps
+	p.streamPtr = fakeStream
+	p.loopPtr = fakeLoop
+	p.setState(PlayerStatePlaying)
+
+	// Close should succeed even though disconnect failed (best-effort cleanup)
+	if err := p.Close(); err != nil {
+		t.Fatalf("Close should succeed despite disconnect error: %v", err)
 	}
 }

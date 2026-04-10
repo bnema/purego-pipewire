@@ -220,6 +220,8 @@ func (p *player) deactivateStream() error {
 
 // teardown releases player-owned stream and main-loop resources through
 // StreamOps. Safe to call when fields are nil or on repeated invocation.
+// DisconnectStream is called before DestroyStream as best-effort cleanup;
+// if disconnect fails, teardown continues (destroy is the definitive release).
 func (p *player) teardown() {
 	p.mu.Lock()
 	streamOps := p.streamOps
@@ -233,8 +235,9 @@ func (p *player) teardown() {
 		return
 	}
 
-	// Destroy stream first (it depends on the loop).
+	// Disconnect then destroy stream (disconnect is best-effort, destroy is definitive).
 	if streamPtr != nil {
+		_ = streamOps.DisconnectStream(streamPtr) // Best-effort cleanup
 		streamOps.DestroyStream(streamPtr)
 	}
 
