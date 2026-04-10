@@ -36,7 +36,7 @@ func expectStartWithSync(mockOps *mocks.MockStreamOps, fakeLoop, fakeStream unsa
 		Channels:        cfg.Channels,
 		FramesPerBuffer: cfg.FramesPerBuffer,
 	}).Return(nil)
-	mockOps.EXPECT().SetStreamActive(fakeStream, true).Return(nil)
+	mockOps.EXPECT().SetStreamActive(fakeStream, true).Return(nil).Once()
 	mockOps.EXPECT().RunMainLoop(fakeLoop).RunAndReturn(func(unsafe.Pointer) error {
 		wg.Done()
 		return nil
@@ -542,5 +542,109 @@ func TestPlayerTeardownContinuesOnDisconnectError(t *testing.T) {
 	// Close should succeed even though disconnect failed (best-effort cleanup)
 	if err := p.Close(); err != nil {
 		t.Fatalf("Close should succeed despite disconnect error: %v", err)
+	}
+}
+
+// TestPlayerRestartActivationFailureCleansUpResources verifies that when
+// SetStreamActive(true) fails during a restart (after Stop), owned stream
+// and loop resources are cleaned up and no stale pointers remain.
+func TestPlayerRestartActivationFailureCleansUpResources(t *testing.T) {
+	mockOps := mocks.NewMockStreamOps(t)
+	fakeLoop := unsafe.Pointer(uintptr(0xCAFE))
+	fakeStream := unsafe.Pointer(uintptr(0xBEEF))
+	cfg := defaultTestConfig()
+	activateErr := errors.New("activate failed on restart")
+
+	// First start: create resources
+	wg := expectStartWithSync(mockOps, fakeLoop, fakeStream, cfg)
+	// Stop: deactivate
+	mockOps.EXPECT().SetStreamActive(fakeStream, false).Return(nil)
+	// Restart: activation fails → teardown cleans up
+	mockOps.EXPECT().SetStreamActive(fakeStream, true).Return(activateErr)
+	// teardown should call DisconnectStream, DestroyStream, QuitMainLoop, DestroyMainLoop
+	mockOps.EXPECT().DisconnectStream(fakeStream).Return(nil)
+	mockOps.EXPECT().DestroyStream(fakeStream).Return()
+	mockOps.EXPECT().QuitMainLoop(fakeLoop).Return()
+	mockOps.EXPECT().DestroyMainLoop(fakeLoop).Return()
+
+	p := newPlayer(cfg, PlayerCallbacks{})
+	p.streamOps = mockOps
+
+	// Start
+	if err := p.Start(); err != nil {
+		t.Fatalf("Start failed: %v", err)
+	}
+	waitOnMainLoop(t, wg)
+
+	// Stop
+	if err := p.Stop(); err != nil {
+		t.Fatalf("Stop failed: %v", err)
+	}
+
+	// Restart should fail because SetStreamActive fails
+	err := p.Start()
+	if err == nil {
+		t.Fatal("expected Start to fail on restart activation failure")
+	}
+	if !errors.Is(err, activateErr) {
+		t.Fatalf("expected activateErr, got %v", err)
+	}
+
+	// Player should be in Error state
+	if p.State() != PlayerStateError {
+		t.Errorf("expected Error state after failed restart activation, got %v", p.State())
+	}
+
+	// Stale pointers must be cleared
+	p.mu.Lock()
+	loopPtr := p.loopPtr
+	streamPtr := p.streamPtr
+	p.mu.Unlock()
+
+	if loopPtr != nil {
+		t.Error("expected loopPtr to be nil after failed restart activation")
+	}
+	if streamPtr != nil {
+		t.Error("expected streamPtr to be nil after failed restart activation")
+	}
+}
+
+// TestPlayerRestartDoesNotStartSecondMainLoop verifies that when restarting
+// after Stop (reusing existing resources), no second RunMainLoop call is
+// made — only SetStreamActive(true) is called.
+func TestPlayerRestartDoesNotStartSecondMainLoop(t *testing.T) {
+	mockOps := mocks.NewMockStreamOps(t)
+	fakeLoop := unsafe.Pointer(uintptr(0xCAFE))
+	fakeStream := unsafe.Pointer(uintptr(0xBEEF))
+	cfg := defaultTestConfig()
+
+	// First start: full resource creation + RunMainLoop
+	wg := expectStartWithSync(mockOps, fakeLoop, fakeStream, cfg)
+	// Stop: deactivate
+	mockOps.EXPECT().SetStreamActive(fakeStream, false).Return(nil)
+	// Restart: only SetStreamActive(true) — NO CreateMainLoop, NO RunMainLoop
+	mockOps.EXPECT().SetStreamActive(fakeStream, true).Return(nil)
+
+	p := newPlayer(cfg, PlayerCallbacks{})
+	p.streamOps = mockOps
+
+	// Start
+	if err := p.Start(); err != nil {
+		t.Fatalf("Start failed: %v", err)
+	}
+	waitOnMainLoop(t, wg)
+
+	// Stop
+	if err := p.Stop(); err != nil {
+		t.Fatalf("Stop failed: %v", err)
+	}
+
+	// Restart — mock will fail if any extra calls are made
+	if err := p.Start(); err != nil {
+		t.Fatalf("Restart failed: %v", err)
+	}
+
+	if p.State() != PlayerStatePlaying {
+		t.Fatalf("expected Playing state after restart, got %v", p.State())
 	}
 }

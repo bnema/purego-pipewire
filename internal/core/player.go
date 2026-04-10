@@ -16,8 +16,11 @@ var (
 	ErrPlayerClosed       = errors.New("player is closed")
 )
 
-// player is the internal player shell with state machine
+// player is the internal player shell with state machine.
 type player struct {
+	// config is immutable after construction. It is safe to read from
+	// any goroutine — including the PipeWire process callback — without
+	// holding mu.
 	config    playerConfig
 	callbacks playerCallbacks
 	state     atomic.Int32
@@ -141,6 +144,9 @@ func (p *player) Start() error {
 		p.mu.Unlock()
 
 		if err := p.streamOps.SetStreamActive(streamPtr, true); err != nil {
+			// Activation failed — clean up owned resources so stale pointers
+			// are not left behind, then transition to Error.
+			p.teardown()
 			p.transition(PlayerStateError)
 			return err
 		}
