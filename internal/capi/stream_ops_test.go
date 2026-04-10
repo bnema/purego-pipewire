@@ -268,9 +268,9 @@ func TestDisconnectStreamReturnsNilOnSuccess(t *testing.T) {
 }
 
 // TestConnectPlaybackStreamRejectsMissingFormat verifies that ConnectPlaybackStream
-// rejects a zero-valued PlaybackFormat at the StreamOps layer. This is a temporary
-// guard; once SPA params are wired, the rejection will also cover missing/invalid
-// SPA param construction.
+// rejects a zero-valued PlaybackFormat at the StreamOps layer by returning
+// ErrInvalidPlaybackFormat. This is a temporary guard; once SPA params are
+// wired, the rejection will also cover missing/invalid SPA param construction.
 func TestConnectPlaybackStreamRejectsMissingFormat(t *testing.T) {
 	origConnect := pw_stream_connect
 	t.Cleanup(func() { pw_stream_connect = origConnect })
@@ -290,14 +290,17 @@ func TestConnectPlaybackStreamRejectsMissingFormat(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error for zero-valued PlaybackFormat, got nil")
 	}
+	if !errors.Is(err, ErrInvalidPlaybackFormat) {
+		t.Fatalf("expected error wrapping ErrInvalidPlaybackFormat, got: %v", err)
+	}
 }
 
-// TestConnectPlaybackStreamBuildsParamsFromFormat verifies that ConnectPlaybackStream
+// TestConnectPlaybackStreamAcceptsValidFormat verifies that ConnectPlaybackStream
 // accepts a valid PlaybackFormat and calls pw_stream_connect successfully.
 // NOTE: The format is not yet forwarded to PipeWire as SPA params; this test
-// only confirms that the format is accepted at the seam. A subsequent task
-// will add tests verifying that the format values reach the C call.
-func TestConnectPlaybackStreamBuildsParamsFromFormat(t *testing.T) {
+// only confirms that the format is accepted at the validation seam. A subsequent
+// task will add tests verifying that the format values reach the C call.
+func TestConnectPlaybackStreamAcceptsValidFormat(t *testing.T) {
 	origConnect := pw_stream_connect
 	t.Cleanup(func() { pw_stream_connect = origConnect })
 

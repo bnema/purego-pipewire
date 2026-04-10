@@ -22,9 +22,9 @@ type StreamOps interface {
 	// stream needs more audio data. Returns the stream pointer or an error.
 	CreatePlaybackStream(loopPtr unsafe.Pointer, name string, onProcess func()) (streamPtr unsafe.Pointer, err error)
 
-	// ConnectPlaybackStream connects the stream for playback output using the
-	// given format. The format is currently validated but not yet forwarded to
-	// PipeWire as SPA params; that wiring will happen in a subsequent task.
+	// ConnectPlaybackStream connects the stream for playback output.
+	// The format is validated but not yet forwarded to PipeWire as SPA params;
+	// that wiring will happen in a subsequent task.
 	ConnectPlaybackStream(streamPtr unsafe.Pointer, format PlaybackFormat) error
 
 	// SetStreamActive activates or deactivates the stream.

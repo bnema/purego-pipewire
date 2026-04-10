@@ -1,6 +1,7 @@
 package capi
 
 import (
+	"errors"
 	"fmt"
 	"sync"
 	"unsafe"
@@ -17,6 +18,11 @@ type PWError struct {
 func (e *PWError) Error() string {
 	return fmt.Sprintf("%s failed: %d", e.Func, e.Code)
 }
+
+// ErrInvalidPlaybackFormat is returned by ConnectPlaybackStream when the
+// provided PlaybackFormat has zero or negative fields. Callers can use
+// errors.Is to check for this condition specifically.
+var ErrInvalidPlaybackFormat = errors.New("invalid playback format")
 
 var (
 	errStreamCreate   = &PWError{Func: "pw_stream_new_simple", Code: 0}
@@ -90,9 +96,10 @@ func (s *streamOpsImpl) ConnectPlaybackStream(streamPtr unsafe.Pointer, format p
 	// NOTE: The format fields are not yet forwarded to PipeWire as SPA params.
 	// This validation is a temporary guard that will be superseded once SPA
 	// param building is wired in a subsequent task.
+	// Returns ErrInvalidPlaybackFormat (wrappable via errors.Is) for bad values.
 	if format.SampleRate <= 0 || format.Channels <= 0 || format.FramesPerBuffer <= 0 {
-		return fmt.Errorf("invalid PlaybackFormat: SampleRate=%d, Channels=%d, FramesPerBuffer=%d",
-			format.SampleRate, format.Channels, format.FramesPerBuffer)
+		return fmt.Errorf("%w: SampleRate=%d, Channels=%d, FramesPerBuffer=%d",
+			ErrInvalidPlaybackFormat, format.SampleRate, format.Channels, format.FramesPerBuffer)
 	}
 	// PW_DIRECTION_OUTPUT = 1, PW_ID_ANY = 0xffffffff
 	// PW_STREAM_FLAG_AUTOCONNECT | PW_STREAM_FLAG_MAP_BUFFERS = 0x01 | 0x04
