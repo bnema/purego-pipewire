@@ -122,6 +122,18 @@ func TestEmitWritesAdaptersAndCompositeFiles(t *testing.T) {
 		t.Fatal("adapters output missing PWStreamConnect method")
 	}
 
+	// Verify adapter forwarding calls use argument names only (no types).
+	// For pw_stream_connect with signature "func(stream unsafe.Pointer, direction int32, ...)",
+	// the forwarding call must be "pw_stream_connect(stream, direction, id, flags, ports, n_ports)"
+	// NOT "pw_stream_connect(stream unsafe.Pointer, direction int32, ...)"
+	if strings.Contains(adapterStr, "pw_stream_connect(stream unsafe.Pointer") {
+		t.Fatal("adapter forwarding call contains type annotations — call site should use only argument names")
+	}
+	// Verify correct call syntax: forwarding with just names
+	if !strings.Contains(adapterStr, "pw_stream_connect(stream, direction, id, flags, ports, n_ports)") {
+		t.Fatal("adapter forwarding call missing correct call-site syntax pw_stream_connect(stream, direction, id, flags, ports, n_ports)")
+	}
+
 	// Verify composite port file exists
 	compositeContent, ok := paths["internal/ports/out/capi_gen.go"]
 	if !ok {
@@ -135,6 +147,10 @@ func TestEmitWritesAdaptersAndCompositeFiles(t *testing.T) {
 	}
 	if !strings.Contains(compositeStr, "StreamPlaybackAPI") {
 		t.Fatal("composite output missing StreamPlaybackAPI embed")
+	}
+	// Verify composite does not contain unused unsafe import
+	if strings.Contains(compositeStr, `import "unsafe"`) {
+		t.Fatal("composite output must not contain unused unsafe import — composite only embeds interfaces")
 	}
 }
 
