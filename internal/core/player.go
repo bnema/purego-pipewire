@@ -4,6 +4,9 @@ import (
 	"errors"
 	"sync"
 	"sync/atomic"
+	"unsafe"
+
+	portout "github.com/bnema/purego-pipewire/internal/ports/out"
 )
 
 var (
@@ -18,6 +21,11 @@ type player struct {
 	state     atomic.Int32
 	paused    atomic.Bool
 	mu        sync.Mutex
+
+	// Stream cleanup fields — nil when no stream is active.
+	streamOps portout.StreamOps
+	streamPtr unsafe.Pointer
+	loopPtr   unsafe.Pointer
 }
 
 // newPlayer creates a new player instance
@@ -139,6 +147,7 @@ func (p *player) Pause() error {
 }
 
 // Stop stops playback but allows restart.
+// Returns an error if stream deactivation fails, leaving the state unchanged.
 func (p *player) Stop() error {
 	current := p.State()
 	if current == PlayerStateClosed || current == PlayerStateClosing {
@@ -150,11 +159,13 @@ func (p *player) Stop() error {
 		return ErrInvalidPlayerState
 	}
 
-	// Clear paused flag
-	p.setPaused(false)
+	// Deactivate stream - if this fails, return the error and don't transition
+	if err := p.deactivateStream(); err != nil {
+		return err
+	}
 
-	// Deactivate stream (placeholder)
-	p.deactivateStream()
+	// Clear paused flag only after successful deactivation
+	p.setPaused(false)
 
 	return p.transition(PlayerStateStopped)
 }
@@ -193,9 +204,13 @@ func (p *player) setPaused(paused bool) {
 	p.paused.Store(paused)
 }
 
-// deactivateStream deactivates the stream (placeholder)
-func (p *player) deactivateStream() {
-	// Minimal placeholder - will be implemented in future tasks
+// deactivateStream deactivates the stream via StreamOps.
+// Returns an error if deactivation fails. No-op when streamOps is nil.
+func (p *player) deactivateStream() error {
+	if p.streamOps == nil || p.streamPtr == nil {
+		return nil
+	}
+	return p.streamOps.SetStreamActive(p.streamPtr, false)
 }
 
 // teardown performs cleanup (placeholder)

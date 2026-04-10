@@ -118,9 +118,8 @@ func (s *streamOpsImpl) DestroyStream(streamPtr unsafe.Pointer) {
 	delete(s.pinned, streamPtr)
 	s.mu.Unlock()
 
-	// pw_stream_destroy is not in the generated bindings yet;
-	// disconnect is the safe fallback to release the stream.
-	pw_stream_disconnect(streamPtr)
+	// Use the generated pw_stream_destroy binding for proper cleanup.
+	pw_stream_destroy(streamPtr)
 }
 
 func (s *streamOpsImpl) CreateMainLoop() (unsafe.Pointer, error) {
@@ -136,11 +135,8 @@ func (s *streamOpsImpl) RunMainLoop(loopPtr unsafe.Pointer) {
 }
 
 func (s *streamOpsImpl) QuitMainLoop(loopPtr unsafe.Pointer) {
-	// pw_main_loop_quit is not in the generated bindings yet.
-	// This is a placeholder — the main loop will exit when the
-	// stream is disconnected or the process is terminated.
-	//
-	// TODO: Add pw_main_loop_quit to gen/pipewire.json and regenerate.
+	// Use the generated pw_main_loop_quit binding to signal loop exit.
+	pw_main_loop_quit(loopPtr)
 }
 
 func (s *streamOpsImpl) DestroyMainLoop(loopPtr unsafe.Pointer) {

@@ -15,6 +15,7 @@ packages:
       CAPI:
       InitAPI:
       LoopAPI:
+      StreamOps:
   github.com/bnema/purego-pipewire/pipewire:
     config:
       all: false
