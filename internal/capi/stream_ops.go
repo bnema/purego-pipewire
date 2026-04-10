@@ -20,7 +20,6 @@ func (e *PWError) Error() string {
 
 var (
 	errStreamCreate   = &PWError{Func: "pw_stream_new_simple", Code: 0}
-	errStreamConnect  = &PWError{Func: "pw_stream_connect", Code: 0}
 	errMainLoopCreate = &PWError{Func: "pw_main_loop_new", Code: 0}
 )
 
