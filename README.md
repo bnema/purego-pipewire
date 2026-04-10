@@ -41,6 +41,8 @@ The sync script is currently a placeholder for the planned header-import workflo
 
 ## Integration tests
 
-Run integration tests (requires PipeWire runtime):
+Tagged integration tests require a **real PipeWire runtime/daemon** and verify the public lifecycle API against a live runtime:
 
     go test -tags integration ./integration ./pipewire -v
+
+These tests exercise state transitions (Idle → Playing → Stopped → Closed) through an actual PipeWire instance. Deeper cleanup internals are primarily covered by unit tests that use mocked dependencies.
