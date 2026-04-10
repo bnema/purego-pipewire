@@ -174,10 +174,18 @@ func TestConnectParamsHelpers(t *testing.T) {
 		t.Error("Pointer() returned nil")
 	}
 
-	// The pointer should point to the start of the storage buffer.
-	expected := unsafe.Pointer(&cp.storage[0])
-	if ptr != expected {
-		t.Errorf("Pointer() = %v, want %v", ptr, expected)
+	// Pointer() must return the address of the params slice entry (spa_pod **),
+	// NOT the raw spa_pod * that the entry points to.
+	expectedParamsAddr := unsafe.Pointer(&cp.params[0])
+	if ptr != expectedParamsAddr {
+		t.Errorf("Pointer() = %v, want &params[0] = %v", ptr, expectedParamsAddr)
+	}
+
+	// Pointer() must NOT equal the storage start (that would be spa_pod *,
+	// which is the wrong indirection level for pw_stream_connect).
+	storageAddr := unsafe.Pointer(&cp.storage[0])
+	if ptr == storageAddr {
+		t.Errorf("Pointer() must not equal &storage[0] (%v); it should be one indirection level above", storageAddr)
 	}
 }
 

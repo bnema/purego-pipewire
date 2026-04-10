@@ -131,13 +131,13 @@ type connectParams struct {
 	params  []unsafe.Pointer
 }
 
-// Pointer returns a pointer to the first param, suitable for passing as
-// the params argument to pw_stream_connect.
+// Pointer returns a pointer to the params array, suitable for passing as
+// the params argument to pw_stream_connect (which expects spa_pod **).
 func (cp *connectParams) Pointer() unsafe.Pointer {
 	if len(cp.params) == 0 {
 		return nil
 	}
-	return cp.params[0]
+	return unsafe.Pointer(&cp.params[0])
 }
 
 // Count returns the number of params in the params slice.
