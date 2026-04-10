@@ -36,6 +36,9 @@ func (b *PCMBuffer) allocate() {
 
 // PlayerConfig holds configuration for the player
 type PlayerConfig struct {
+	// SampleRate is carried here for upcoming runtime format negotiation.
+	// It is not yet consumed by the core player but will be used when the
+	// StreamOps layer builds SPA params for PipeWire.
 	SampleRate      int
 	FramesPerBuffer int
 	Channels        int

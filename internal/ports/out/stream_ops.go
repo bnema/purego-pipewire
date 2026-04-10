@@ -3,6 +3,10 @@ package out
 import "unsafe"
 
 // PlaybackFormat describes the audio format for a playback stream.
+// The fields are carried through the public API and core config now so the
+// plumbing is in place for upcoming runtime format negotiation.  The values
+// are not yet forwarded to PipeWire; that will happen when SPA param
+// building is wired in a subsequent task.
 type PlaybackFormat struct {
 	SampleRate      int
 	Channels        int
@@ -19,7 +23,8 @@ type StreamOps interface {
 	CreatePlaybackStream(loopPtr unsafe.Pointer, name string, onProcess func()) (streamPtr unsafe.Pointer, err error)
 
 	// ConnectPlaybackStream connects the stream for playback output using the
-	// given format. Returns an error if the format is invalid or the C call fails.
+	// given format. The format is currently validated but not yet forwarded to
+	// PipeWire as SPA params; that wiring will happen in a subsequent task.
 	ConnectPlaybackStream(streamPtr unsafe.Pointer, format PlaybackFormat) error
 
 	// SetStreamActive activates or deactivates the stream.

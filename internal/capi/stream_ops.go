@@ -87,6 +87,9 @@ func (s *streamOpsImpl) CreatePlaybackStream(loopPtr unsafe.Pointer, name string
 
 func (s *streamOpsImpl) ConnectPlaybackStream(streamPtr unsafe.Pointer, format portout.PlaybackFormat) error {
 	// Validate format before making the C call.
+	// NOTE: The format fields are not yet forwarded to PipeWire as SPA params.
+	// This validation is a temporary guard that will be superseded once SPA
+	// param building is wired in a subsequent task.
 	if format.SampleRate <= 0 || format.Channels <= 0 || format.FramesPerBuffer <= 0 {
 		return fmt.Errorf("invalid PlaybackFormat: SampleRate=%d, Channels=%d, FramesPerBuffer=%d",
 			format.SampleRate, format.Channels, format.FramesPerBuffer)
