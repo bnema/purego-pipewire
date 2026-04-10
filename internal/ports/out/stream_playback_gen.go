@@ -13,4 +13,5 @@ type StreamPlaybackAPI interface {
 	PWStreamDequeueBuffer(stream unsafe.Pointer) unsafe.Pointer
 	PWStreamQueueBuffer(stream unsafe.Pointer, buffer unsafe.Pointer) int32
 	PWStreamAddListener(stream unsafe.Pointer, listener unsafe.Pointer, events unsafe.Pointer, data unsafe.Pointer) int32
+	PWStreamDestroy(stream unsafe.Pointer)
 }

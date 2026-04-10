@@ -207,6 +207,57 @@ func (_c *MockCAPI_PWMainLoopNew_Call) RunAndReturn(run func(props unsafe.Pointe
 	return _c
 }
 
+// PWMainLoopQuit provides a mock function for the type MockCAPI
+func (_mock *MockCAPI) PWMainLoopQuit(loop unsafe.Pointer) int32 {
+	ret := _mock.Called(loop)
+
+	if len(ret) == 0 {
+		panic("no return value specified for PWMainLoopQuit")
+	}
+
+	var r0 int32
+	if returnFunc, ok := ret.Get(0).(func(unsafe.Pointer) int32); ok {
+		r0 = returnFunc(loop)
+	} else {
+		r0 = ret.Get(0).(int32)
+	}
+	return r0
+}
+
+// MockCAPI_PWMainLoopQuit_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'PWMainLoopQuit'
+type MockCAPI_PWMainLoopQuit_Call struct {
+	*mock.Call
+}
+
+// PWMainLoopQuit is a helper method to define mock.On call
+//   - loop unsafe.Pointer
+func (_e *MockCAPI_Expecter) PWMainLoopQuit(loop interface{}) *MockCAPI_PWMainLoopQuit_Call {
+	return &MockCAPI_PWMainLoopQuit_Call{Call: _e.mock.On("PWMainLoopQuit", loop)}
+}
+
+func (_c *MockCAPI_PWMainLoopQuit_Call) Run(run func(loop unsafe.Pointer)) *MockCAPI_PWMainLoopQuit_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 unsafe.Pointer
+		if args[0] != nil {
+			arg0 = args[0].(unsafe.Pointer)
+		}
+		run(
+			arg0,
+		)
+	})
+	return _c
+}
+
+func (_c *MockCAPI_PWMainLoopQuit_Call) Return(n int32) *MockCAPI_PWMainLoopQuit_Call {
+	_c.Call.Return(n)
+	return _c
+}
+
+func (_c *MockCAPI_PWMainLoopQuit_Call) RunAndReturn(run func(loop unsafe.Pointer) int32) *MockCAPI_PWMainLoopQuit_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // PWMainLoopRun provides a mock function for the type MockCAPI
 func (_mock *MockCAPI) PWMainLoopRun(loop unsafe.Pointer) int32 {
 	ret := _mock.Called(loop)

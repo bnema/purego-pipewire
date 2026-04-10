@@ -9,4 +9,5 @@ type LoopAPI interface {
 	PWMainLoopNew(props unsafe.Pointer) unsafe.Pointer
 	PWMainLoopDestroy(loop unsafe.Pointer)
 	PWMainLoopRun(loop unsafe.Pointer) int32
+	PWMainLoopQuit(loop unsafe.Pointer) int32
 }

@@ -28,6 +28,9 @@ type pw_stream_queue_bufferFunc func(stream unsafe.Pointer, buffer unsafe.Pointe
 // pw_stream_add_listenerFunc is the function type for pw_stream_add_listener.
 type pw_stream_add_listenerFunc func(stream unsafe.Pointer, listener unsafe.Pointer, events unsafe.Pointer, data unsafe.Pointer) int32
 
+// pw_stream_destroyFunc is the function type for pw_stream_destroy.
+type pw_stream_destroyFunc func(stream unsafe.Pointer)
+
 
 
 // pw_stream_events represents the callback struct for pw_stream_events.
@@ -51,6 +54,8 @@ var (
 
 	pw_stream_add_listener pw_stream_add_listenerFunc
 
+	pw_stream_destroy pw_stream_destroyFunc
+
 )
 
 func registerStream_playback(handle uintptr) {
@@ -68,5 +73,7 @@ func registerStream_playback(handle uintptr) {
 	purego.RegisterLibFunc(&pw_stream_queue_buffer, handle, "pw_stream_queue_buffer")
 
 	purego.RegisterLibFunc(&pw_stream_add_listener, handle, "pw_stream_add_listener")
+
+	purego.RegisterLibFunc(&pw_stream_destroy, handle, "pw_stream_destroy")
 
 }
