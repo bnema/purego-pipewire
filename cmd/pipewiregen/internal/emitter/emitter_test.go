@@ -55,10 +55,10 @@ func testPlayerModel() *model.Model {
 			{Name: "pw_stream_add_listener", Library: "pipewire", Group: "stream_playback", Signature: "func(stream unsafe.Pointer, listener unsafe.Pointer, events unsafe.Pointer, data unsafe.Pointer) int32"},
 		},
 		Callbacks: []model.Callback{
-			{Name: "pw_stream_events", Signature: "struct{version uint32; process *func(stream unsafe.Pointer); param_changed *func(stream unsafe.Pointer, id uint32, param unsafe.Pointer); add_buffer *func(stream unsafe.Pointer, buffer unsafe.Pointer); remove_buffer *func(stream unsafe.Pointer, buffer unsafe.Pointer); flush *func(stream unsafe.Pointer, drain bool); drained *func(stream unsafe.Pointer); io_changed *func(stream unsafe.Pointer, id uint32, area unsafe.Pointer, size uint32)}", Group: "stream_playback"},
+			{Name: "pw_stream_events", Signature: "struct{version uint32; destroy *func(stream unsafe.Pointer); state_changed *func(stream unsafe.Pointer, old uint32, state uint32, error *byte); control_info *func(stream unsafe.Pointer, id uint32, control unsafe.Pointer); io_changed *func(stream unsafe.Pointer, id uint32, area unsafe.Pointer, size uint32); param_changed *func(stream unsafe.Pointer, id uint32, param unsafe.Pointer); add_buffer *func(stream unsafe.Pointer, buffer unsafe.Pointer); remove_buffer *func(stream unsafe.Pointer, buffer unsafe.Pointer); process *func(stream unsafe.Pointer); drained *func(stream unsafe.Pointer); command *func(stream unsafe.Pointer, cmd unsafe.Pointer); trigger_done *func(stream unsafe.Pointer)}", Group: "stream_playback"},
 		},
 		EventStructs: []model.EventStruct{
-			{Name: "pw_stream_events", Callbacks: []string{"process", "param_changed", "add_buffer", "remove_buffer", "flush", "drained", "io_changed"}, Group: "stream_playback"},
+			{Name: "pw_stream_events", Callbacks: []string{"destroy", "state_changed", "control_info", "io_changed", "param_changed", "add_buffer", "remove_buffer", "process", "drained", "command", "trigger_done"}, Group: "stream_playback"},
 		},
 	}
 }
@@ -98,6 +98,58 @@ func TestEmitWritesPlayerStreamFiles(t *testing.T) {
 	portContent := string(paths["internal/ports/out/stream_playback_gen.go"])
 	if !strings.Contains(portContent, "StreamPlaybackAPI") {
 		t.Fatalf("port output missing StreamPlaybackAPI interface")
+	}
+}
+
+// TestPWStreamEventsABILayout verifies the generated pw_stream_events struct
+// has fields in the exact order that matches the PipeWire C ABI.
+// This catches layout drift that would silently corrupt callback dispatch.
+func TestPWStreamEventsABILayout(t *testing.T) {
+	paths, err := Emit(testPlayerModel(), t.TempDir())
+	if err != nil {
+		t.Fatalf("Emit returned error: %v", err)
+	}
+	capiContent := string(paths["internal/capi/stream_playback_gen.go"])
+
+	// The correct C ABI field order from <pipewire/stream.h>
+	expectedFields := []string{
+		"version uint32",
+		"destroy *func(",
+		"state_changed *func(",
+		"control_info *func(",
+		"io_changed *func(",
+		"param_changed *func(",
+		"add_buffer *func(",
+		"remove_buffer *func(",
+		"process *func(",
+		"drained *func(",
+		"command *func(",
+		"trigger_done *func(",
+	}
+
+	// Verify all expected fields are present
+	for _, field := range expectedFields {
+		if !strings.Contains(capiContent, field) {
+			t.Errorf("pw_stream_events missing expected field %q", field)
+		}
+	}
+
+	// Verify the spurious "flush" field is NOT present
+	if strings.Contains(capiContent, "flush *func(") {
+		t.Error("pw_stream_events contains spurious 'flush' field — this does not exist in the PipeWire C ABI")
+	}
+
+	// Verify field order: each field must appear after the previous one
+	lastIdx := 0
+	for _, field := range expectedFields {
+		idx := strings.Index(capiContent, field)
+		if idx < 0 {
+			continue // already reported above
+		}
+		if idx < lastIdx {
+			t.Errorf("pw_stream_events field %q appears at wrong position (before previous field)", field)
+		}
+		lastIdx = idx
 	}
 }
 

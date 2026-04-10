@@ -34,7 +34,7 @@ type pw_stream_destroyFunc func(stream unsafe.Pointer)
 
 
 // pw_stream_events represents the callback struct for pw_stream_events.
-type pw_stream_events struct{version uint32; process *func(stream unsafe.Pointer); param_changed *func(stream unsafe.Pointer, id uint32, param unsafe.Pointer); add_buffer *func(stream unsafe.Pointer, buffer unsafe.Pointer); remove_buffer *func(stream unsafe.Pointer, buffer unsafe.Pointer); flush *func(stream unsafe.Pointer, drain bool); drained *func(stream unsafe.Pointer); io_changed *func(stream unsafe.Pointer, id uint32, area unsafe.Pointer, size uint32)}
+type pw_stream_events struct{version uint32; destroy *func(stream unsafe.Pointer); state_changed *func(stream unsafe.Pointer, old uint32, state uint32, error *byte); control_info *func(stream unsafe.Pointer, id uint32, control unsafe.Pointer); io_changed *func(stream unsafe.Pointer, id uint32, area unsafe.Pointer, size uint32); param_changed *func(stream unsafe.Pointer, id uint32, param unsafe.Pointer); add_buffer *func(stream unsafe.Pointer, buffer unsafe.Pointer); remove_buffer *func(stream unsafe.Pointer, buffer unsafe.Pointer); process *func(stream unsafe.Pointer); drained *func(stream unsafe.Pointer); command *func(stream unsafe.Pointer, cmd unsafe.Pointer); trigger_done *func(stream unsafe.Pointer)}
 
 
 
