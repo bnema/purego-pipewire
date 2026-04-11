@@ -2,6 +2,7 @@ package core
 
 import (
 	"errors"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -62,8 +63,8 @@ func waitOnMainLoop(t *testing.T, wg *sync.WaitGroup) {
 
 func TestPlayerStopIsRestartableButCloseIsTerminal(t *testing.T) {
 	mockOps := mocks.NewMockStreamOps(t)
-	fakeLoop := unsafe.Pointer(uintptr(0xBEEF))
-	fakeStream := unsafe.Pointer(uintptr(0xDEAD))
+	fakeLoop := opaqueTestPtr()
+	fakeStream := opaqueTestPtr()
 	cfg := defaultTestConfig()
 
 	// First start creates resources
@@ -149,10 +150,65 @@ func TestPlayerStartFromClosingReturnsError(t *testing.T) {
 	}
 }
 
+func TestPlayerStartCreateResourcesAndActivateKeepsCreateAndTransitionErrors(t *testing.T) {
+	mockOps := mocks.NewMockStreamOps(t)
+	createErr := errors.New("create main loop failed")
+
+	mockOps.EXPECT().CreateMainLoop().Return(nil, createErr)
+
+	p := newPlayer(defaultTestConfig(), PlayerCallbacks{})
+	p.streamOps = mockOps
+
+	err := p.startCreateResourcesAndActivate()
+	if err == nil {
+		t.Fatal("expected startCreateResourcesAndActivate to fail, got nil")
+	}
+	if !errors.Is(err, createErr) {
+		t.Fatalf("expected createErr, got %v", err)
+	}
+	if !errors.Is(err, ErrInvalidPlayerState) {
+		t.Fatalf("expected ErrInvalidPlayerState, got %v", err)
+	}
+}
+
+func TestPlayerEnsureRuntimeWrapsInitPipeWireError(t *testing.T) {
+	origRegister := registerPipeWire
+	origDefault := defaultPipeWireCAPI
+	origOps := defaultPipeWireOps
+	origInit := initializePipeWire
+	t.Cleanup(func() {
+		registerPipeWire = origRegister
+		defaultPipeWireCAPI = origDefault
+		defaultPipeWireOps = origOps
+		initializePipeWire = origInit
+	})
+
+	initErr := errors.New("init pipewire failed")
+	registerPipeWire = func() error { return nil }
+	defaultPipeWireCAPI = func() portout.CAPI { return mocks.NewMockCAPI(t) }
+	defaultPipeWireOps = func() portout.StreamOps {
+		t.Fatal("defaultPipeWireOps should not be called when init fails")
+		return nil
+	}
+	initializePipeWire = func(portout.CAPI) error { return initErr }
+
+	p := newPlayer(defaultTestConfig(), PlayerCallbacks{})
+	err := p.ensureRuntime()
+	if err == nil {
+		t.Fatal("expected ensureRuntime to fail, got nil")
+	}
+	if !errors.Is(err, initErr) {
+		t.Fatalf("expected initErr, got %v", err)
+	}
+	if !strings.Contains(err.Error(), "initialize pipewire runtime") {
+		t.Fatalf("expected context in error, got %v", err)
+	}
+}
+
 func TestPlayerStartTransitionsThroughStartingToPlaying(t *testing.T) {
 	mockOps := mocks.NewMockStreamOps(t)
-	fakeLoop := unsafe.Pointer(uintptr(0xBEEF))
-	fakeStream := unsafe.Pointer(uintptr(0xDEAD))
+	fakeLoop := opaqueTestPtr()
+	fakeStream := opaqueTestPtr()
 	cfg := defaultTestConfig()
 
 	wg := expectStartWithSync(mockOps, fakeLoop, fakeStream, cfg)
@@ -178,8 +234,8 @@ func TestPlayerStartTransitionsThroughStartingToPlaying(t *testing.T) {
 
 func TestPlayerPauseTransitionsToPaused(t *testing.T) {
 	mockOps := mocks.NewMockStreamOps(t)
-	fakeLoop := unsafe.Pointer(uintptr(0xBEEF))
-	fakeStream := unsafe.Pointer(uintptr(0xDEAD))
+	fakeLoop := opaqueTestPtr()
+	fakeStream := opaqueTestPtr()
 	cfg := defaultTestConfig()
 
 	wg := expectStartWithSync(mockOps, fakeLoop, fakeStream, cfg)
@@ -205,8 +261,8 @@ func TestPlayerPauseTransitionsToPaused(t *testing.T) {
 
 func TestPlayerStopClearsPausedState(t *testing.T) {
 	mockOps := mocks.NewMockStreamOps(t)
-	fakeLoop := unsafe.Pointer(uintptr(0xBEEF))
-	fakeStream := unsafe.Pointer(uintptr(0xDEAD))
+	fakeLoop := opaqueTestPtr()
+	fakeStream := opaqueTestPtr()
 	cfg := defaultTestConfig()
 
 	wg := expectStartWithSync(mockOps, fakeLoop, fakeStream, cfg)
@@ -240,8 +296,8 @@ func TestPlayerStopClearsPausedState(t *testing.T) {
 
 func TestPlayerCloseIsIdempotent(t *testing.T) {
 	mockOps := mocks.NewMockStreamOps(t)
-	fakeLoop := unsafe.Pointer(uintptr(0xBEEF))
-	fakeStream := unsafe.Pointer(uintptr(0xDEAD))
+	fakeLoop := opaqueTestPtr()
+	fakeStream := opaqueTestPtr()
 	cfg := defaultTestConfig()
 
 	wg := expectStartWithSync(mockOps, fakeLoop, fakeStream, cfg)
@@ -280,8 +336,8 @@ func TestPlayerCloseIsIdempotent(t *testing.T) {
 // SetStreamActive(false) via StreamOps and transitions to Stopped.
 func TestPlayerStopDeactivatesStream(t *testing.T) {
 	mockOps := mocks.NewMockStreamOps(t)
-	fakeLoop := unsafe.Pointer(uintptr(0x1234))
-	fakeStream := unsafe.Pointer(uintptr(0x5678))
+	fakeLoop := opaqueTestPtr()
+	fakeStream := opaqueTestPtr()
 	cfg := defaultTestConfig()
 
 	wg := expectStartWithSync(mockOps, fakeLoop, fakeStream, cfg)
@@ -312,8 +368,8 @@ func TestPlayerStopDeactivatesStream(t *testing.T) {
 // SetStreamActive error and leaves the player in the pre-stop state.
 func TestPlayerStopReturnsDeactivateError(t *testing.T) {
 	mockOps := mocks.NewMockStreamOps(t)
-	fakeLoop := unsafe.Pointer(uintptr(0x5678))
-	fakeStream := unsafe.Pointer(uintptr(0x9ABC))
+	fakeLoop := opaqueTestPtr()
+	fakeStream := opaqueTestPtr()
 	deactivateErr := errors.New("deactivate failed")
 	cfg := defaultTestConfig()
 
@@ -374,8 +430,8 @@ func TestPlayerStopWithNilStreamPtrIsNoop(t *testing.T) {
 // when the corresponding pointers are set.
 func TestPlayerCloseTeardownCallsStreamOps(t *testing.T) {
 	mockOps := mocks.NewMockStreamOps(t)
-	fakeStream := unsafe.Pointer(uintptr(0xAAAA))
-	fakeLoop := unsafe.Pointer(uintptr(0xBBBB))
+	fakeStream := opaqueTestPtr()
+	fakeLoop := opaqueTestPtr()
 
 	// Expect teardown calls in order: DisconnectStream, DestroyStream, QuitMainLoop, DestroyMainLoop.
 	mockOps.EXPECT().DisconnectStream(fakeStream).Return(nil)
@@ -426,8 +482,8 @@ func TestPlayerCloseWithNilPointersIsNoop(t *testing.T) {
 // with teardown resources does not call StreamOps methods a second time.
 func TestPlayerRepeatedCloseIsSafe(t *testing.T) {
 	mockOps := mocks.NewMockStreamOps(t)
-	fakeStream := unsafe.Pointer(uintptr(0xCCCC))
-	fakeLoop := unsafe.Pointer(uintptr(0xDDDD))
+	fakeStream := opaqueTestPtr()
+	fakeLoop := opaqueTestPtr()
 
 	// Only expect one set of teardown calls.
 	mockOps.EXPECT().DisconnectStream(fakeStream).Return(nil)
@@ -455,7 +511,7 @@ func TestPlayerRepeatedCloseIsSafe(t *testing.T) {
 // when only streamPtr is set (no loopPtr).
 func TestPlayerTeardownWithOnlyStreamPtr(t *testing.T) {
 	mockOps := mocks.NewMockStreamOps(t)
-	fakeStream := unsafe.Pointer(uintptr(0xEEEE))
+	fakeStream := opaqueTestPtr()
 
 	mockOps.EXPECT().DisconnectStream(fakeStream).Return(nil)
 	mockOps.EXPECT().DestroyStream(fakeStream).Return()
@@ -477,7 +533,7 @@ func TestPlayerTeardownWithOnlyStreamPtr(t *testing.T) {
 // when only loopPtr is set (no streamPtr).
 func TestPlayerTeardownWithOnlyLoopPtr(t *testing.T) {
 	mockOps := mocks.NewMockStreamOps(t)
-	fakeLoop := unsafe.Pointer(uintptr(0xFFFF))
+	fakeLoop := opaqueTestPtr()
 
 	mockOps.EXPECT().QuitMainLoop(fakeLoop).Return()
 	mockOps.EXPECT().DestroyMainLoop(fakeLoop).Return()
@@ -499,8 +555,8 @@ func TestPlayerTeardownWithOnlyLoopPtr(t *testing.T) {
 // DisconnectStream before DestroyStream when a stream exists.
 func TestPlayerTeardownCallsDisconnectStream(t *testing.T) {
 	mockOps := mocks.NewMockStreamOps(t)
-	fakeStream := unsafe.Pointer(uintptr(0xAAAA))
-	fakeLoop := unsafe.Pointer(uintptr(0xBBBB))
+	fakeStream := opaqueTestPtr()
+	fakeLoop := opaqueTestPtr()
 
 	// Expect disconnect before destroy
 	mockOps.EXPECT().DisconnectStream(fakeStream).Return(nil)
@@ -523,8 +579,8 @@ func TestPlayerTeardownCallsDisconnectStream(t *testing.T) {
 // continues cleanup even if DisconnectStream returns an error.
 func TestPlayerTeardownContinuesOnDisconnectError(t *testing.T) {
 	mockOps := mocks.NewMockStreamOps(t)
-	fakeStream := unsafe.Pointer(uintptr(0xCCCC))
-	fakeLoop := unsafe.Pointer(uintptr(0xDDDD))
+	fakeStream := opaqueTestPtr()
+	fakeLoop := opaqueTestPtr()
 	disconnectErr := errors.New("disconnect failed")
 
 	// Disconnect fails, but destroy should still be called
@@ -550,8 +606,8 @@ func TestPlayerTeardownContinuesOnDisconnectError(t *testing.T) {
 // and loop resources are cleaned up and no stale pointers remain.
 func TestPlayerRestartActivationFailureCleansUpResources(t *testing.T) {
 	mockOps := mocks.NewMockStreamOps(t)
-	fakeLoop := unsafe.Pointer(uintptr(0xCAFE))
-	fakeStream := unsafe.Pointer(uintptr(0xBEEF))
+	fakeLoop := opaqueTestPtr()
+	fakeStream := opaqueTestPtr()
 	cfg := defaultTestConfig()
 	activateErr := errors.New("activate failed on restart")
 
@@ -614,8 +670,8 @@ func TestPlayerRestartActivationFailureCleansUpResources(t *testing.T) {
 // made — only SetStreamActive(true) is called.
 func TestPlayerRestartDoesNotStartSecondMainLoop(t *testing.T) {
 	mockOps := mocks.NewMockStreamOps(t)
-	fakeLoop := unsafe.Pointer(uintptr(0xCAFE))
-	fakeStream := unsafe.Pointer(uintptr(0xBEEF))
+	fakeLoop := opaqueTestPtr()
+	fakeStream := opaqueTestPtr()
 	cfg := defaultTestConfig()
 
 	// First start: full resource creation + RunMainLoop

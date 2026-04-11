@@ -185,10 +185,11 @@ func TestFillAdapterReusesBuffer(t *testing.T) {
 	callbacks := PlayerCallbacks{
 		Fill: func(buf *PCMBuffer) (int, error) {
 			callCount++
-			if callCount == 1 {
+			switch callCount {
+			case 1:
 				firstBuf = buf
 				_ = firstBuf // Avoid unused variable warning - we'll use this for assertion later
-			} else if callCount == 2 {
+			case 2:
 				// Verify the buffer is reusable - on second call it should be the same
 				// pointer but with potentially updated contents
 				if buf == nil {

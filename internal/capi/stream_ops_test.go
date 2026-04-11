@@ -10,6 +10,10 @@ import (
 	portout "github.com/bnema/purego-pipewire/internal/ports/out"
 )
 
+func opaquePtr() unsafe.Pointer {
+	return unsafe.Pointer(new(byte))
+}
+
 // TestDestroyStreamCallsPwStreamDestroy verifies that DestroyStream delegates
 // to the generated pw_stream_destroy binding (not pw_stream_disconnect).
 func TestDestroyStreamCallsPwStreamDestroy(t *testing.T) {
@@ -28,7 +32,7 @@ func TestDestroyStreamCallsPwStreamDestroy(t *testing.T) {
 		pinned: make(map[unsafe.Pointer]*streamCallbackStorage),
 	}
 
-	fakePtr := unsafe.Pointer(uintptr(0x1234))
+	fakePtr := opaquePtr()
 	ops.pinned[fakePtr] = &streamCallbackStorage{}
 
 	ops.DestroyStream(fakePtr)
@@ -73,7 +77,7 @@ func TestDestroyStreamDoubleDestroySkipsSecondCall(t *testing.T) {
 		pinned: make(map[unsafe.Pointer]*streamCallbackStorage),
 	}
 
-	fakePtr := unsafe.Pointer(uintptr(0xABCD))
+	fakePtr := opaquePtr()
 	ops.pinned[fakePtr] = &streamCallbackStorage{}
 
 	ops.DestroyStream(fakePtr)
@@ -97,8 +101,9 @@ func TestDestroyStreamBookkeepingDoesNotLeak(t *testing.T) {
 	}
 
 	const cycles = 100
-	for i := uintptr(1); i <= cycles; i++ {
-		ptr := unsafe.Pointer(i)
+	tokens := make([]byte, cycles)
+	for i := range tokens {
+		ptr := unsafe.Pointer(&tokens[i])
 		ops.pinned[ptr] = &streamCallbackStorage{}
 		ops.DestroyStream(ptr)
 	}
@@ -124,7 +129,7 @@ func TestQuitMainLoopCallsPwMainLoopQuit(t *testing.T) {
 	}
 
 	ops := &streamOpsImpl{}
-	fakeLoop := unsafe.Pointer(uintptr(0x5678))
+	fakeLoop := opaquePtr()
 
 	ops.QuitMainLoop(fakeLoop)
 
@@ -147,7 +152,7 @@ func TestConnectPlaybackStreamReturnsTypedErrorOnNegativeReturn(t *testing.T) {
 	}
 
 	ops := &streamOpsImpl{}
-	fakePtr := unsafe.Pointer(uintptr(0x1234))
+	fakePtr := opaquePtr()
 
 	validFmt := portout.PlaybackFormat{
 		SampleRate:      48000,
@@ -182,7 +187,7 @@ func TestSetStreamActiveReturnsTypedErrorOnNegativeReturn(t *testing.T) {
 	}
 
 	ops := &streamOpsImpl{}
-	fakePtr := unsafe.Pointer(uintptr(0x5678))
+	fakePtr := opaquePtr()
 
 	err := ops.SetStreamActive(fakePtr, true)
 	if err == nil {
@@ -212,8 +217,8 @@ func TestQueueBufferReturnsTypedErrorOnNegativeReturn(t *testing.T) {
 	}
 
 	ops := &streamOpsImpl{}
-	fakePtr := unsafe.Pointer(uintptr(0x9ABC))
-	fakeBuf := unsafe.Pointer(uintptr(0xDEF0))
+	fakePtr := opaquePtr()
+	fakeBuf := opaquePtr()
 
 	err := ops.QueueBuffer(fakePtr, fakeBuf)
 	if err == nil {
@@ -243,7 +248,7 @@ func TestDisconnectStreamReturnsTypedErrorOnNegativeReturn(t *testing.T) {
 	}
 
 	ops := &streamOpsImpl{}
-	fakePtr := unsafe.Pointer(uintptr(0x1111))
+	fakePtr := opaquePtr()
 
 	err := ops.DisconnectStream(fakePtr)
 	if err == nil {
@@ -273,7 +278,7 @@ func TestDisconnectStreamReturnsNilOnSuccess(t *testing.T) {
 	}
 
 	ops := &streamOpsImpl{}
-	fakePtr := unsafe.Pointer(uintptr(0x2222))
+	fakePtr := opaquePtr()
 
 	err := ops.DisconnectStream(fakePtr)
 	if err != nil {
@@ -295,7 +300,7 @@ func TestConnectPlaybackStreamDelegatesFramesPerBufferValidation(t *testing.T) {
 	}
 
 	ops := &streamOpsImpl{}
-	fakePtr := unsafe.Pointer(uintptr(0x1234))
+	fakePtr := opaquePtr()
 
 	fmt := portout.PlaybackFormat{SampleRate: 48000, Channels: 2, FramesPerBuffer: 0}
 	err := ops.ConnectPlaybackStream(fakePtr, fmt)
@@ -325,7 +330,7 @@ func TestConnectPlaybackStreamDelegatesSampleRateAndChannelsValidation(t *testin
 	}
 
 	ops := &streamOpsImpl{}
-	fakePtr := unsafe.Pointer(uintptr(0x1234))
+	fakePtr := opaquePtr()
 
 	tests := []struct {
 		name    string
@@ -379,7 +384,7 @@ func TestConnectPlaybackStreamAcceptsValidFormat(t *testing.T) {
 	}
 
 	ops := &streamOpsImpl{}
-	fakePtr := unsafe.Pointer(uintptr(0x5678))
+	fakePtr := opaquePtr()
 
 	validFmt := portout.PlaybackFormat{
 		SampleRate:      48000,
@@ -406,7 +411,7 @@ func TestRunMainLoopReturnsPWErrorOnNegativeResult(t *testing.T) {
 	}
 
 	ops := &streamOpsImpl{}
-	fakeLoop := unsafe.Pointer(uintptr(0xAAAA))
+	fakeLoop := opaquePtr()
 
 	err := ops.RunMainLoop(fakeLoop)
 	if err == nil {
@@ -436,7 +441,7 @@ func TestRunMainLoopReturnsNilOnSuccess(t *testing.T) {
 	}
 
 	ops := &streamOpsImpl{}
-	fakeLoop := unsafe.Pointer(uintptr(0xBBBB))
+	fakeLoop := opaquePtr()
 
 	err := ops.RunMainLoop(fakeLoop)
 	if err != nil {
@@ -455,8 +460,8 @@ func TestCreatePlaybackStreamUsesPWLoopFromMainLoop(t *testing.T) {
 		pw_stream_new_simple = origNewSimple
 	})
 
-	fakeMainLoop := unsafe.Pointer(uintptr(0xAAAA))
-	fakePWLoop := unsafe.Pointer(uintptr(0xBBBB))
+	fakeMainLoop := opaquePtr()
+	fakePWLoop := opaquePtr()
 	var gotContext unsafe.Pointer
 
 	pw_main_loop_get_loop = func(loop unsafe.Pointer) unsafe.Pointer {
@@ -469,7 +474,7 @@ func TestCreatePlaybackStreamUsesPWLoopFromMainLoop(t *testing.T) {
 	pw_stream_new_simple = func(context unsafe.Pointer, name *byte, props unsafe.Pointer, events unsafe.Pointer, data unsafe.Pointer) unsafe.Pointer {
 		gotContext = context
 		// Return a non-nil fake stream pointer.
-		return unsafe.Pointer(uintptr(0xCCCC))
+		return opaquePtr()
 	}
 
 	ops := &streamOpsImpl{
@@ -513,7 +518,7 @@ func TestCreatePlaybackStreamReturnsPWErrorWhenPWLoopIsNull(t *testing.T) {
 		pinned: make(map[unsafe.Pointer]*streamCallbackStorage),
 	}
 
-	fakeMainLoop := unsafe.Pointer(uintptr(0xAAAA))
+	fakeMainLoop := opaquePtr()
 	_, err := ops.CreatePlaybackStream(fakeMainLoop, "test", func() {})
 	if err == nil {
 		t.Fatal("expected error when pw_main_loop_get_loop returns nil")
@@ -545,7 +550,7 @@ func TestConnectPlaybackStreamPassesParamsFromHelper(t *testing.T) {
 	}
 
 	ops := &streamOpsImpl{}
-	fakePtr := unsafe.Pointer(uintptr(0x5678))
+	fakePtr := opaquePtr()
 
 	validFmt := portout.PlaybackFormat{
 		SampleRate:      48000,
@@ -577,7 +582,7 @@ func TestConnectPlaybackStreamPinsParamsAfterSuccess(t *testing.T) {
 	}
 
 	ops := &streamOpsImpl{}
-	fakePtr := unsafe.Pointer(uintptr(0x5678))
+	fakePtr := opaquePtr()
 
 	validFmt := portout.PlaybackFormat{
 		SampleRate:      48000,
@@ -616,7 +621,7 @@ func TestConnectPlaybackStreamDoesNotPinParamsOnFailure(t *testing.T) {
 	}
 
 	ops := &streamOpsImpl{}
-	fakePtr := unsafe.Pointer(uintptr(0x5678))
+	fakePtr := opaquePtr()
 
 	validFmt := portout.PlaybackFormat{
 		SampleRate:      48000,
@@ -652,7 +657,7 @@ func TestDestroyStreamReleasesPinnedParams(t *testing.T) {
 		pinned: make(map[unsafe.Pointer]*streamCallbackStorage),
 	}
 
-	fakePtr := unsafe.Pointer(uintptr(0xDEAD))
+	fakePtr := opaquePtr()
 	ops.pinned[fakePtr] = &streamCallbackStorage{}
 
 	validFmt := portout.PlaybackFormat{

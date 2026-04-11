@@ -149,7 +149,9 @@ func (p *player) emitDrain() {
 
 // fail transitions the player to error state and invokes OnError
 func (p *player) fail(err error) {
-	p.transition(PlayerStateError)
+	if transitionErr := p.transition(PlayerStateError); transitionErr != nil {
+		err = errors.Join(err, fmt.Errorf("transition player to error: %w", transitionErr))
+	}
 	if p.callbacks.OnError != nil {
 		p.callbacks.OnError(err)
 	}

@@ -14,6 +14,11 @@ import (
 var (
 	ErrInvalidPlayerState = errors.New("invalid player state transition")
 	ErrPlayerClosed       = errors.New("player is closed")
+
+	registerPipeWire    = capi.Register
+	defaultPipeWireCAPI = capi.Default
+	defaultPipeWireOps  = capi.DefaultStreamOps
+	initializePipeWire  = initPipeWire
 )
 
 // player is the internal player shell with state machine.
@@ -145,8 +150,7 @@ func (p *player) Start() error {
 			// Activation failed — clean up owned resources so stale pointers
 			// are not left behind, then transition to Error.
 			p.teardown()
-			p.transition(PlayerStateError)
-			return err
+			return p.failWithErrorState("reactivate stream", err)
 		}
 	}
 
@@ -165,16 +169,14 @@ func (p *player) startCreateResourcesAndActivate() error {
 	// Create main loop
 	loopPtr, err := p.streamOps.CreateMainLoop()
 	if err != nil {
-		p.transition(PlayerStateError)
-		return err
+		return p.failWithErrorState("create main loop", err)
 	}
 
 	// Create playback stream
 	streamPtr, err := p.streamOps.CreatePlaybackStream(loopPtr, "purego-pipewire-player", p.onProcess)
 	if err != nil {
 		p.streamOps.DestroyMainLoop(loopPtr)
-		p.transition(PlayerStateError)
-		return err
+		return p.failWithErrorState("create playback stream", err)
 	}
 
 	// Connect stream
@@ -186,8 +188,7 @@ func (p *player) startCreateResourcesAndActivate() error {
 	if err := p.streamOps.ConnectPlaybackStream(streamPtr, format); err != nil {
 		p.streamOps.DestroyStream(streamPtr)
 		p.streamOps.DestroyMainLoop(loopPtr)
-		p.transition(PlayerStateError)
-		return err
+		return p.failWithErrorState("connect playback stream", err)
 	}
 
 	// Activate stream
@@ -196,8 +197,7 @@ func (p *player) startCreateResourcesAndActivate() error {
 		_ = p.streamOps.DisconnectStream(streamPtr)
 		p.streamOps.DestroyStream(streamPtr)
 		p.streamOps.DestroyMainLoop(loopPtr)
-		p.transition(PlayerStateError)
-		return err
+		return p.failWithErrorState("activate playback stream", err)
 	}
 
 	// All steps succeeded — store owned resources
@@ -290,20 +290,29 @@ func (p *player) ensureRuntime() error {
 	if p.streamOps != nil {
 		return nil
 	}
-	if err := capi.Register(); err != nil {
+	if err := registerPipeWire(); err != nil {
 		return fmt.Errorf("register pipewire: %w", err)
 	}
-	capiInstance := capi.Default()
+	capiInstance := defaultPipeWireCAPI()
 	if capiInstance == nil {
 		return errors.New("failed to get default CAPI instance")
 	}
-	initPipeWire(capiInstance)
-	ops := capi.DefaultStreamOps()
+	if err := initializePipeWire(capiInstance); err != nil {
+		return fmt.Errorf("initialize pipewire runtime: %w", err)
+	}
+	ops := defaultPipeWireOps()
 	if ops == nil {
 		return errors.New("failed to obtain default stream operations")
 	}
 	p.streamOps = ops
 	return nil
+}
+
+func (p *player) failWithErrorState(context string, err error) error {
+	if transitionErr := p.transition(PlayerStateError); transitionErr != nil {
+		return errors.Join(fmt.Errorf("%s: %w", context, err), fmt.Errorf("transition player to error: %w", transitionErr))
+	}
+	return fmt.Errorf("%s: %w", context, err)
 }
 
 // setPaused sets the paused flag

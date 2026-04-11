@@ -11,6 +11,10 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
+func opaqueTestPtr() unsafe.Pointer {
+	return unsafe.Pointer(new(byte))
+}
+
 // TestProcessCallbackSilenceFillUnderrun tests that when Fill returns fewer frames
 // than requested, the remaining frames are filled with silence
 func TestProcessCallbackSilenceFillUnderrun(t *testing.T) {
@@ -499,8 +503,8 @@ func TestPCMBufferAllocate(t *testing.T) {
 // goroutine — then transitions to Playing.
 func TestPlayerStartCreatesLoopConnectsStreamAndRunsMainLoop(t *testing.T) {
 	mockOps := mocks.NewMockStreamOps(t)
-	fakeLoop := unsafe.Pointer(uintptr(0xCAFE))
-	fakeStream := unsafe.Pointer(uintptr(0xBEEF))
+	fakeLoop := opaqueTestPtr()
+	fakeStream := opaqueTestPtr()
 	cfg := PlayerConfig{
 		SampleRate:      48000,
 		Channels:        2,
@@ -542,8 +546,8 @@ func TestPlayerStartCreatesLoopConnectsStreamAndRunsMainLoop(t *testing.T) {
 // queue the buffer back.
 func TestProcessCallbackDequeuesProcessesAndQueues(t *testing.T) {
 	mockOps := mocks.NewMockStreamOps(t)
-	fakeLoop := unsafe.Pointer(uintptr(0xCAFE))
-	fakeStream := unsafe.Pointer(uintptr(0xBEEF))
+	fakeLoop := opaqueTestPtr()
+	fakeStream := opaqueTestPtr()
 	cfg := PlayerConfig{
 		SampleRate:      48000,
 		Channels:        2,
@@ -635,8 +639,8 @@ func TestProcessCallbackDequeuesProcessesAndQueues(t *testing.T) {
 // early when DequeueBuffer returns nil.
 func TestProcessCallbackNilBufferReturnsEarly(t *testing.T) {
 	mockOps := mocks.NewMockStreamOps(t)
-	fakeLoop := unsafe.Pointer(uintptr(0xCAFE))
-	fakeStream := unsafe.Pointer(uintptr(0xBEEF))
+	fakeLoop := opaqueTestPtr()
+	fakeStream := opaqueTestPtr()
 	cfg := defaultTestConfig()
 
 	wg := expectStartWithSync(mockOps, fakeLoop, fakeStream, cfg)
@@ -669,8 +673,8 @@ func TestProcessCallbackNilBufferReturnsEarly(t *testing.T) {
 // QueueBuffer returns an error, onProcess routes it through p.fail().
 func TestProcessCallbackQueueBufferFailsRoutesThroughFail(t *testing.T) {
 	mockOps := mocks.NewMockStreamOps(t)
-	fakeLoop := unsafe.Pointer(uintptr(0xCAFE))
-	fakeStream := unsafe.Pointer(uintptr(0xBEEF))
+	fakeLoop := opaqueTestPtr()
+	fakeStream := opaqueTestPtr()
 	cfg := PlayerConfig{
 		SampleRate:      48000,
 		Channels:        2,
@@ -750,8 +754,8 @@ func TestProcessCallbackQueueBufferFailsRoutesThroughFail(t *testing.T) {
 // and still re-queues the buffer.
 func TestProcessCallbackBufferViewFailsRoutesThroughFail(t *testing.T) {
 	mockOps := mocks.NewMockStreamOps(t)
-	fakeLoop := unsafe.Pointer(uintptr(0xCAFE))
-	fakeStream := unsafe.Pointer(uintptr(0xBEEF))
+	fakeLoop := opaqueTestPtr()
+	fakeStream := opaqueTestPtr()
 	cfg := PlayerConfig{
 		SampleRate:      48000,
 		Channels:        2,
@@ -822,8 +826,8 @@ func TestProcessCallbackBufferViewFailsRoutesThroughFail(t *testing.T) {
 // error behavior stand.
 func TestProcessCallbackProcessCMErrorRequeuesBuffer(t *testing.T) {
 	mockOps := mocks.NewMockStreamOps(t)
-	fakeLoop := unsafe.Pointer(uintptr(0xCAFE))
-	fakeStream := unsafe.Pointer(uintptr(0xBEEF))
+	fakeLoop := opaqueTestPtr()
+	fakeStream := opaqueTestPtr()
 	cfg := PlayerConfig{
 		SampleRate:      48000,
 		Channels:        2,
@@ -904,8 +908,8 @@ func TestProcessCallbackProcessCMErrorRequeuesBuffer(t *testing.T) {
 // and loop are destroyed and no stale pointers are left.
 func TestPlayerStartFailedConnectDestroysResources(t *testing.T) {
 	mockOps := mocks.NewMockStreamOps(t)
-	fakeLoop := unsafe.Pointer(uintptr(0xCAFE))
-	fakeStream := unsafe.Pointer(uintptr(0xBEEF))
+	fakeLoop := opaqueTestPtr()
+	fakeStream := opaqueTestPtr()
 	cfg := defaultTestConfig()
 
 	connectErr := errors.New("connect failed")
@@ -957,8 +961,8 @@ func TestPlayerStartFailedConnectDestroysResources(t *testing.T) {
 // and no stale pointers are left.
 func TestPlayerStartFailedActivateDestroysResources(t *testing.T) {
 	mockOps := mocks.NewMockStreamOps(t)
-	fakeLoop := unsafe.Pointer(uintptr(0xCAFE))
-	fakeStream := unsafe.Pointer(uintptr(0xBEEF))
+	fakeLoop := opaqueTestPtr()
+	fakeStream := opaqueTestPtr()
 	cfg := defaultTestConfig()
 
 	activateErr := errors.New("activate failed")
@@ -1011,7 +1015,7 @@ func TestPlayerStartFailedActivateDestroysResources(t *testing.T) {
 // destroyed and no stale pointers are left.
 func TestPlayerStartFailedCreateStreamDestroysLoop(t *testing.T) {
 	mockOps := mocks.NewMockStreamOps(t)
-	fakeLoop := unsafe.Pointer(uintptr(0xCAFE))
+	fakeLoop := opaqueTestPtr()
 	cfg := defaultTestConfig()
 
 	createErr := errors.New("stream creation failed")
@@ -1055,8 +1059,8 @@ func TestPlayerStartFailedCreateStreamDestroysLoop(t *testing.T) {
 // config.FramesPerBuffer even when pwBuffer.Requested is smaller.
 func TestProcessCallbackUsesConfigFramesPerBuffer(t *testing.T) {
 	mockOps := mocks.NewMockStreamOps(t)
-	fakeLoop := unsafe.Pointer(uintptr(0xCAFE))
-	fakeStream := unsafe.Pointer(uintptr(0xBEEF))
+	fakeLoop := opaqueTestPtr()
+	fakeStream := opaqueTestPtr()
 
 	// Config requests 1024 frames per buffer, but PipeWire will request
 	// fewer (941) due to rate conversion.

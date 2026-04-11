@@ -115,7 +115,7 @@ func buildRawAudioParams(format portout.PlaybackFormat) (*connectParams, error) 
 	off += writeIdProp(buf[off:], spaFormatMediaSubtype, spaMediaSubtypeRaw)
 	off += writeIdProp(buf[off:], spaFormatAudioFormat, spaAudioFormatF32P)
 	off += writeIntProp(buf[off:], spaFormatAudioRate, int32(format.SampleRate))
-	off += writeIntProp(buf[off:], spaFormatAudioChannels, int32(format.Channels))
+	_ = writeIntProp(buf[off:], spaFormatAudioChannels, int32(format.Channels))
 
 	cp := &connectParams{
 		storage: buf,
