@@ -49,10 +49,10 @@ func TestBuildRawAudioParamsProducesOneConnectParam(t *testing.T) {
 	objType := binary.LittleEndian.Uint32(cp.storage[8:12])
 	objID := binary.LittleEndian.Uint32(cp.storage[12:16])
 
-	const spaTypeObjectFORMAT uint32 = 0x40003
+	const wantSpaTypeObjectFormat uint32 = 0x40003
 	const spaParamEnumFormat uint32 = 3
-	if objType != spaTypeObjectFormat {
-		t.Fatalf("expected object type SPA_TYPE_OBJECT_Format (0x%x), got 0x%x", spaTypeObjectFormat, objType)
+	if objType != wantSpaTypeObjectFormat {
+		t.Fatalf("expected object type SPA_TYPE_OBJECT_Format (0x%x), got 0x%x", wantSpaTypeObjectFormat, objType)
 	}
 	if objID != spaParamEnumFormat {
 		t.Fatalf("expected object id SPA_PARAM_EnumFormat (%d), got %d", spaParamEnumFormat, objID)
@@ -113,6 +113,16 @@ func TestBuildRawAudioParamsRejectsInvalidFormat(t *testing.T) {
 			name:   "negative_channels",
 			fmt:    portout.PlaybackFormat{SampleRate: 48000, Channels: -1, FramesPerBuffer: 1024},
 			errMsg: "channels",
+		},
+		{
+			name:   "zero_frames_per_buffer",
+			fmt:    portout.PlaybackFormat{SampleRate: 48000, Channels: 2, FramesPerBuffer: 0},
+			errMsg: "frames per buffer",
+		},
+		{
+			name:   "negative_frames_per_buffer",
+			fmt:    portout.PlaybackFormat{SampleRate: 48000, Channels: 2, FramesPerBuffer: -1},
+			errMsg: "frames per buffer",
 		},
 	}
 

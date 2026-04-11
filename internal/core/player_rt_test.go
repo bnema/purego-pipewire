@@ -747,7 +747,7 @@ func TestProcessCallbackQueueBufferFailsRoutesThroughFail(t *testing.T) {
 
 // TestProcessCallbackBufferViewFailsRoutesThroughFail verifies that when
 // newPWBufferView fails, onProcess routes the error through p.fail()
-// and does not attempt to queue the buffer.
+// and still re-queues the buffer.
 func TestProcessCallbackBufferViewFailsRoutesThroughFail(t *testing.T) {
 	mockOps := mocks.NewMockStreamOps(t)
 	fakeLoop := unsafe.Pointer(uintptr(0xCAFE))
@@ -796,9 +796,10 @@ func TestProcessCallbackBufferViewFailsRoutesThroughFail(t *testing.T) {
 	}
 	waitOnMainLoop(t, wg)
 
-	// DequeueBuffer returns a buffer that will fail newPWBufferView
-	// QueueBuffer should NOT be called
+	// DequeueBuffer returns a buffer that will fail newPWBufferView.
+	// The buffer should still be re-queued.
 	mockOps.EXPECT().DequeueBuffer(fakeStream).Return(bufPtr)
+	mockOps.EXPECT().QueueBuffer(fakeStream, bufPtr).Return(nil)
 
 	p.onProcess()
 
@@ -816,10 +817,10 @@ func TestProcessCallbackBufferViewFailsRoutesThroughFail(t *testing.T) {
 	}
 }
 
-// TestProcessCallbackProcessCMErrorSkipsQueue verifies that when processPCM
-// returns an error, onProcess does not queue the buffer and lets the existing
+// TestProcessCallbackProcessCMErrorRequeuesBuffer verifies that when processPCM
+// returns an error, onProcess still re-queues the buffer and lets the existing
 // error behavior stand.
-func TestProcessCallbackProcessCMErrorSkipsQueue(t *testing.T) {
+func TestProcessCallbackProcessCMErrorRequeuesBuffer(t *testing.T) {
 	mockOps := mocks.NewMockStreamOps(t)
 	fakeLoop := unsafe.Pointer(uintptr(0xCAFE))
 	fakeStream := unsafe.Pointer(uintptr(0xBEEF))
@@ -880,10 +881,10 @@ func TestProcessCallbackProcessCMErrorSkipsQueue(t *testing.T) {
 	}
 	waitOnMainLoop(t, wg)
 
-	// DequeueBuffer returns a buffer; QueueBuffer should NOT be called
-	// because processPCM (via Fill) returns an error
+	// DequeueBuffer returns a buffer; the buffer should still be re-queued
+	// even though processPCM (via Fill) returns an error.
 	mockOps.EXPECT().DequeueBuffer(fakeStream).Return(bufPtr)
-	// Note: no QueueBuffer expectation
+	mockOps.EXPECT().QueueBuffer(fakeStream, bufPtr).Return(nil)
 
 	p.onProcess()
 
@@ -1048,4 +1049,102 @@ func TestPlayerStartFailedCreateStreamDestroysLoop(t *testing.T) {
 	if streamPtr != nil {
 		t.Error("expected streamPtr to be nil after failed start")
 	}
+}
+
+// TestProcessCallbackUsesConfigFramesPerBuffer verifies that onProcess uses
+// config.FramesPerBuffer even when pwBuffer.Requested is smaller.
+func TestProcessCallbackUsesConfigFramesPerBuffer(t *testing.T) {
+	mockOps := mocks.NewMockStreamOps(t)
+	fakeLoop := unsafe.Pointer(uintptr(0xCAFE))
+	fakeStream := unsafe.Pointer(uintptr(0xBEEF))
+
+	// Config requests 1024 frames per buffer, but PipeWire will request
+	// fewer (941) due to rate conversion.
+	const configFrames = 1024
+	const requestedFrames = 941
+	const channels = 2
+
+	cfg := PlayerConfig{
+		SampleRate:      48000,
+		Channels:        channels,
+		FramesPerBuffer: configFrames,
+	}
+
+	// Build a real pwBuffer with backing storage for the full configFrames
+	// so that a view up to configFrames would succeed — but set
+	// pwBuf.Requested smaller to ensure onProcess still uses configFrames.
+	channelData := make([][]float32, channels)
+	floatPtrs := make([]unsafe.Pointer, channels)
+	for ch := 0; ch < channels; ch++ {
+		channelData[ch] = make([]float32, configFrames)
+		floatPtrs[ch] = unsafe.Pointer(&channelData[ch][0])
+	}
+	chunkSlice := make([]spaChunk, channels)
+	dataSlice := make([]spaData, channels)
+	for ch := 0; ch < channels; ch++ {
+		dataSlice[ch] = spaData{
+			Type:    spaDataTypeMemPtr,
+			Flags:   spaDataFlagRW,
+			Maxsize: uint32(configFrames * 4),
+			Data:    floatPtrs[ch],
+			Chunk:   &chunkSlice[ch],
+		}
+	}
+	spaBuf := spaBuffer{
+		NDatas: uint32(channels),
+		Datas:  unsafe.Pointer(&dataSlice[0]),
+	}
+	pwBuf := pwBuffer{
+		Buffer:    &spaBuf,
+		Requested: uint64(requestedFrames), // PipeWire asks for 941, not 1024
+	}
+	bufPtr := unsafe.Pointer(&pwBuf)
+
+	wg := expectStartWithSync(mockOps, fakeLoop, fakeStream, cfg)
+	mockOps.EXPECT().DequeueBuffer(fakeStream).Return(bufPtr)
+	mockOps.EXPECT().QueueBuffer(fakeStream, bufPtr).Return(nil)
+
+	var receivedFrames int
+	p := newPlayer(cfg, PlayerCallbacks{
+		Fill: func(buf *PCMBuffer) (int, error) {
+			receivedFrames = buf.Frames
+			// Write data into the buffer to verify propagation
+			for ch := 0; ch < buf.Channels; ch++ {
+				for f := 0; f < buf.Frames; f++ {
+					buf.Samples[ch][f] = float32(f)
+				}
+			}
+			return buf.Frames, nil
+		},
+	})
+	p.streamOps = mockOps
+
+	if err := p.Start(); err != nil {
+		t.Fatalf("Start failed: %v", err)
+	}
+
+	p.onProcess()
+
+	// Fill must have been called with the configured frame count.
+	if receivedFrames != configFrames {
+		t.Errorf("Fill received %d frames, want %d (config.FramesPerBuffer)", receivedFrames, configFrames)
+	}
+
+	// Commit must set chunk sizes and pwBuf.Size to reflect configFrames.
+	for ch := 0; ch < channels; ch++ {
+		wantChunkSize := uint32(configFrames * 4)
+		if chunkSlice[ch].Size != wantChunkSize {
+			t.Errorf("chunk[%d].Size = %d, want %d (configFrames*4)", ch, chunkSlice[ch].Size, wantChunkSize)
+		}
+		if chunkSlice[ch].Stride != 4 {
+			t.Errorf("chunk[%d].Stride = %d, want 4", ch, chunkSlice[ch].Stride)
+		}
+	}
+
+	if pwBuf.Size != uint64(configFrames) {
+		t.Errorf("pwBuf.Size = %d, want %d (configFrames)", pwBuf.Size, configFrames)
+	}
+
+	_ = channelData // prevent escape
+	waitOnMainLoop(t, wg)
 }

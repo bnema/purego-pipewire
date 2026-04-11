@@ -129,7 +129,7 @@ func (p *player) Start() error {
 
 	// Check if we already have PipeWire resources (restart after Stop)
 	p.mu.Lock()
-	hasResources := p.loopPtr != nil && p.streamPtr != nil
+	hasResources := p.loopPtr != nil && atomic.LoadPointer((*unsafe.Pointer)(unsafe.Pointer(&p.streamPtr))) != nil
 	p.mu.Unlock()
 
 	if !hasResources {
@@ -139,9 +139,7 @@ func (p *player) Start() error {
 		}
 	} else {
 		// Restart — just reactivate existing stream
-		p.mu.Lock()
-		streamPtr := p.streamPtr
-		p.mu.Unlock()
+		streamPtr := atomic.LoadPointer((*unsafe.Pointer)(unsafe.Pointer(&p.streamPtr)))
 
 		if err := p.streamOps.SetStreamActive(streamPtr, true); err != nil {
 			// Activation failed — clean up owned resources so stale pointers
@@ -205,7 +203,7 @@ func (p *player) startCreateResourcesAndActivate() error {
 	// All steps succeeded — store owned resources
 	p.mu.Lock()
 	p.loopPtr = loopPtr
-	p.streamPtr = streamPtr
+	atomic.StorePointer((*unsafe.Pointer)(unsafe.Pointer(&p.streamPtr)), streamPtr)
 	p.mu.Unlock()
 
 	// Start main loop in an internal goroutine
@@ -276,7 +274,7 @@ func (p *player) Close() error {
 		}
 	}
 
-	// Teardown resources (placeholder)
+	// Teardown the player-owned stream and main-loop resources.
 	p.teardown()
 
 	// Transition to Closed
@@ -285,8 +283,9 @@ func (p *player) Close() error {
 
 // ensureRuntime ensures the player has a usable StreamOps implementation.
 // If streamOps is already set (e.g., by tests), it is used as-is.
-// Otherwise, PipeWire is registered via capi.Register() and the default
-// StreamOps implementation is obtained.
+// Otherwise, PipeWire is registered via capi.Register(), the default CAPI
+// instance is retrieved, and the shared process-level init guard is used
+// before obtaining the default StreamOps implementation.
 func (p *player) ensureRuntime() error {
 	if p.streamOps != nil {
 		return nil
@@ -294,6 +293,11 @@ func (p *player) ensureRuntime() error {
 	if err := capi.Register(); err != nil {
 		return fmt.Errorf("register pipewire: %w", err)
 	}
+	capiInstance := capi.Default()
+	if capiInstance == nil {
+		return errors.New("failed to get default CAPI instance")
+	}
+	initPipeWire(capiInstance)
 	ops := capi.DefaultStreamOps()
 	if ops == nil {
 		return errors.New("failed to obtain default stream operations")
@@ -312,7 +316,7 @@ func (p *player) setPaused(paused bool) {
 func (p *player) deactivateStream() error {
 	p.mu.Lock()
 	streamOps := p.streamOps
-	streamPtr := p.streamPtr
+	streamPtr := atomic.LoadPointer((*unsafe.Pointer)(unsafe.Pointer(&p.streamPtr)))
 	p.mu.Unlock()
 
 	if streamOps == nil || streamPtr == nil {
@@ -328,9 +332,9 @@ func (p *player) deactivateStream() error {
 func (p *player) teardown() {
 	p.mu.Lock()
 	streamOps := p.streamOps
-	streamPtr := p.streamPtr
+	streamPtr := atomic.LoadPointer((*unsafe.Pointer)(unsafe.Pointer(&p.streamPtr)))
 	loopPtr := p.loopPtr
-	p.streamPtr = nil
+	atomic.StorePointer((*unsafe.Pointer)(unsafe.Pointer(&p.streamPtr)), nil)
 	p.loopPtr = nil
 	p.mu.Unlock()
 

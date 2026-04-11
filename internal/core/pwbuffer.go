@@ -40,9 +40,11 @@ type spaBuffer struct {
 
 // pwBuffer mirrors struct pw_buffer from <pipewire/stream.h>.
 type pwBuffer struct {
-	Buffer   *spaBuffer
-	UserData unsafe.Pointer
-	Size     uint64
+	Buffer    *spaBuffer
+	UserData  unsafe.Pointer
+	Size      uint64
+	Requested uint64
+	Time      uint64
 }
 
 // pwBufferView provides a safe Go view over a dequeue'd PipeWire buffer,
@@ -52,6 +54,8 @@ type pwBufferView struct {
 	buf      *pwBuffer
 	channels int
 	frames   int
+	data     []spaData
+	pcm      PCMBuffer
 	samples  [][]float32
 }
 
@@ -102,7 +106,14 @@ func newPWBufferView(bufPtr unsafe.Pointer, channels, frames int) (*pwBufferView
 		buf:      pw,
 		channels: channels,
 		frames:   frames,
-		samples:  samples,
+		data:     dataSlice,
+		pcm: PCMBuffer{
+			Frames:   frames,
+			Channels: channels,
+			Stride:   4,
+			Samples:  samples,
+		},
+		samples: samples,
 	}, nil
 }
 
@@ -110,12 +121,7 @@ func newPWBufferView(bufPtr unsafe.Pointer, channels, frames int) (*pwBufferView
 // The caller can write into Samples and then call Commit.
 // Stride is set to 4 (bytes per float32 sample) for planar float32 layout.
 func (v *pwBufferView) PCM() *PCMBuffer {
-	return &PCMBuffer{
-		Frames:   v.frames,
-		Channels: v.channels,
-		Stride:   4, // sizeof(float32) — planar float32 byte stride per channel
-		Samples:  v.samples,
-	}
+	return &v.pcm
 }
 
 // Commit updates each data chunk's size and stride to reflect the number of
@@ -123,9 +129,8 @@ func (v *pwBufferView) PCM() *PCMBuffer {
 // audio data into the PCM buffer.
 func (v *pwBufferView) Commit(frames int) {
 	v.buf.Size = uint64(frames)
-	dataSlice := unsafe.Slice((*spaData)(v.buf.Buffer.Datas), int(v.buf.Buffer.NDatas))
 	for i := 0; i < v.channels; i++ {
-		data := &dataSlice[i]
+		data := &v.data[i]
 		if data.Chunk != nil {
 			data.Chunk.Size = uint32(frames * 4) // float32 = 4 bytes
 			data.Chunk.Stride = 4                // stride for planar float32

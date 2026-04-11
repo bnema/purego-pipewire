@@ -10,7 +10,7 @@ import (
 
 // SPA POD type identifiers (from spa/utils/type.h).
 const (
-	spaTypeNone      uint32 = iota + 1 // 1
+	spaTypeNone      uint32 = iota + 1 // 1; reserved so iota matches SPA type numbering
 	spaTypeBool                        // 2
 	spaTypeId                          // 3
 	spaTypeInt                         // 4
@@ -44,7 +44,6 @@ const (
 
 	// Audio format keys (SPA_FORMAT_START_Audio = 0x10000).
 	spaFormatAudioFormat   uint32 = 0x10001 // SPA_FORMAT_AUDIO_format
-	spaFormatAudioFlags    uint32 = 0x10002 // SPA_FORMAT_AUDIO_flags
 	spaFormatAudioRate     uint32 = 0x10003 // SPA_FORMAT_AUDIO_rate
 	spaFormatAudioChannels uint32 = 0x10004 // SPA_FORMAT_AUDIO_channels
 )
@@ -53,7 +52,6 @@ const (
 const (
 	spaMediaTypeAudio  uint32 = 1 // SPA_MEDIA_TYPE_audio
 	spaMediaSubtypeRaw uint32 = 1 // SPA_MEDIA_SUBTYPE_raw
-	spaMediaSubtypeDSP uint32 = 2 // SPA_MEDIA_SUBTYPE_dsp
 )
 
 // SPA audio format identifiers (from spa/param/audio/raw.h).
@@ -78,6 +76,10 @@ func buildRawAudioParams(format portout.PlaybackFormat) (*connectParams, error) 
 	if format.Channels <= 0 {
 		return nil, fmt.Errorf("%w: channels must be positive, got %d",
 			ErrInvalidPlaybackFormat, format.Channels)
+	}
+	if format.FramesPerBuffer <= 0 {
+		return nil, fmt.Errorf("%w: frames per buffer must be positive, got %d",
+			ErrInvalidPlaybackFormat, format.FramesPerBuffer)
 	}
 
 	// Layout of an SPA POD Object for EnumFormat with 5 properties:

@@ -114,17 +114,17 @@ func TestPWStreamEventsABILayout(t *testing.T) {
 	// The correct C ABI field order from <pipewire/stream.h>
 	expectedFields := []string{
 		"version uint32",
-		"destroy *func(",
-		"state_changed *func(",
-		"control_info *func(",
-		"io_changed *func(",
-		"param_changed *func(",
-		"add_buffer *func(",
-		"remove_buffer *func(",
-		"process *func(",
-		"drained *func(",
-		"command *func(",
-		"trigger_done *func(",
+		"destroy uintptr",
+		"state_changed uintptr",
+		"control_info uintptr",
+		"io_changed uintptr",
+		"param_changed uintptr",
+		"add_buffer uintptr",
+		"remove_buffer uintptr",
+		"process uintptr",
+		"drained uintptr",
+		"command uintptr",
+		"trigger_done uintptr",
 	}
 
 	// Verify all expected fields are present
@@ -135,8 +135,12 @@ func TestPWStreamEventsABILayout(t *testing.T) {
 	}
 
 	// Verify the spurious "flush" field is NOT present
-	if strings.Contains(capiContent, "flush *func(") {
+	if strings.Contains(capiContent, "flush uintptr") {
 		t.Error("pw_stream_events contains spurious 'flush' field — this does not exist in the PipeWire C ABI")
+	}
+
+	if strings.Contains(capiContent, "*func(") {
+		t.Error("pw_stream_events callback fields must be emitted as uintptr function pointers, not Go func pointers")
 	}
 
 	// Verify field order: each field must appear after the previous one

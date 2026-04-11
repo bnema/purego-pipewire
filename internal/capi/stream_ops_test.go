@@ -2,6 +2,8 @@ package capi
 
 import (
 	"errors"
+	"reflect"
+	"strings"
 	"testing"
 	"unsafe"
 
@@ -41,6 +43,18 @@ func TestDestroyStreamCallsPwStreamDestroy(t *testing.T) {
 	// Verify internal bookkeeping: pinned entry should be removed.
 	if _, exists := ops.pinned[fakePtr]; exists {
 		t.Error("expected callback storage to be unpinned after destroy")
+	}
+}
+
+// TestPWStreamEventsUsesFunctionPointerABI verifies that the generated callback
+// fields use raw function-pointer storage, not Go func pointers.
+func TestPWStreamEventsUsesFunctionPointerABI(t *testing.T) {
+	field, ok := reflect.TypeOf(pw_stream_events{}).FieldByName("process")
+	if !ok {
+		t.Fatal("pw_stream_events.process field missing")
+	}
+	if field.Type.Kind() != reflect.Uintptr {
+		t.Fatalf("pw_stream_events.process has kind %s, want uintptr", field.Type.Kind())
 	}
 }
 
@@ -267,31 +281,85 @@ func TestDisconnectStreamReturnsNilOnSuccess(t *testing.T) {
 	}
 }
 
-// TestConnectPlaybackStreamRejectsMissingFormat verifies that ConnectPlaybackStream
-// rejects a zero-valued PlaybackFormat at the StreamOps layer by returning
-// ErrInvalidPlaybackFormat. This is a temporary guard; once SPA params are
-// wired, the rejection will also cover missing/invalid SPA param construction.
-func TestConnectPlaybackStreamRejectsMissingFormat(t *testing.T) {
+// TestConnectPlaybackStreamDelegatesFramesPerBufferValidation verifies that
+// ConnectPlaybackStream rejects invalid FramesPerBuffer values via the helper
+// and does not reach pw_stream_connect.
+func TestConnectPlaybackStreamDelegatesFramesPerBufferValidation(t *testing.T) {
 	origConnect := pw_stream_connect
 	t.Cleanup(func() { pw_stream_connect = origConnect })
 
-	// Even if pw_stream_connect succeeds, a zero PlaybackFormat should be rejected
-	// at the StreamOps layer before the C call is made.
+	var called bool
 	pw_stream_connect = func(stream unsafe.Pointer, direction int32, id uint32, flags uint32, ports unsafe.Pointer, n_ports uint32) int32 {
+		called = true
 		return 0
 	}
 
 	ops := &streamOpsImpl{}
 	fakePtr := unsafe.Pointer(uintptr(0x1234))
 
-	// Zero-valued PlaybackFormat must be rejected.
-	zeroFmt := portout.PlaybackFormat{}
-	err := ops.ConnectPlaybackStream(fakePtr, zeroFmt)
+	fmt := portout.PlaybackFormat{SampleRate: 48000, Channels: 2, FramesPerBuffer: 0}
+	err := ops.ConnectPlaybackStream(fakePtr, fmt)
 	if err == nil {
-		t.Fatal("expected error for zero-valued PlaybackFormat, got nil")
+		t.Fatal("expected error for missing FramesPerBuffer, got nil")
 	}
 	if !errors.Is(err, ErrInvalidPlaybackFormat) {
 		t.Fatalf("expected error wrapping ErrInvalidPlaybackFormat, got: %v", err)
+	}
+	if !strings.Contains(err.Error(), "frames per buffer") {
+		t.Fatalf("expected helper FramesPerBuffer validation, got: %v", err)
+	}
+	if called {
+		t.Fatal("pw_stream_connect should not be called for invalid FramesPerBuffer")
+	}
+}
+
+// TestConnectPlaybackStreamDelegatesSampleRateAndChannelsValidation verifies
+// that invalid sample rate and channel values are rejected by buildRawAudioParams.
+func TestConnectPlaybackStreamDelegatesSampleRateAndChannelsValidation(t *testing.T) {
+	origConnect := pw_stream_connect
+	t.Cleanup(func() { pw_stream_connect = origConnect })
+
+	pw_stream_connect = func(stream unsafe.Pointer, direction int32, id uint32, flags uint32, ports unsafe.Pointer, n_ports uint32) int32 {
+		t.Fatal("pw_stream_connect should not be called for invalid sample rate or channels")
+		return 0
+	}
+
+	ops := &streamOpsImpl{}
+	fakePtr := unsafe.Pointer(uintptr(0x1234))
+
+	tests := []struct {
+		name    string
+		fmt     portout.PlaybackFormat
+		wantMsg string
+	}{
+		{
+			name:    "zero_sample_rate",
+			fmt:     portout.PlaybackFormat{SampleRate: 0, Channels: 2, FramesPerBuffer: 1024},
+			wantMsg: "sample rate must be positive",
+		},
+		{
+			name:    "zero_channels",
+			fmt:     portout.PlaybackFormat{SampleRate: 48000, Channels: 0, FramesPerBuffer: 1024},
+			wantMsg: "channels must be positive",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := ops.ConnectPlaybackStream(fakePtr, tt.fmt)
+			if err == nil {
+				t.Fatalf("expected error for %s, got nil", tt.name)
+			}
+			if !errors.Is(err, ErrInvalidPlaybackFormat) {
+				t.Fatalf("expected error wrapping ErrInvalidPlaybackFormat, got: %v", err)
+			}
+			if !strings.Contains(err.Error(), tt.wantMsg) {
+				t.Fatalf("expected error to contain %q, got: %v", tt.wantMsg, err)
+			}
+			if strings.Contains(err.Error(), "FramesPerBuffer") {
+				t.Fatalf("expected helper validation to report only sample rate/channels, got: %v", err)
+			}
+		})
 	}
 }
 

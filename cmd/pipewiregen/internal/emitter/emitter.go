@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"text/template"
 	"unicode"
@@ -14,28 +15,22 @@ import (
 )
 
 var (
-	capiTmpl      *template.Template
-	portTmpl      *template.Template
-	adapterTmpl   *template.Template
-	compositeTmpl *template.Template
+	callbackFieldPattern = regexp.MustCompile(` \*func\([^)]*\)`)
+	capiTmpl             *template.Template
+	portTmpl             *template.Template
+	adapterTmpl          *template.Template
+	compositeTmpl        *template.Template
 )
 
 func init() {
-	capiTmpl = template.Must(template.New("capi").Funcs(template.FuncMap{
-		"title": titleCase,
-	}).Parse(capiTemplate))
+	capiTmpl = mustTemplate("capi", capiTemplate)
+	portTmpl = mustTemplate("port", portTemplate)
+	adapterTmpl = mustTemplate("adapter", adapterTemplate)
+	compositeTmpl = mustTemplate("composite", compositeTemplate)
+}
 
-	portTmpl = template.Must(template.New("port").Funcs(template.FuncMap{
-		"title": titleCase,
-	}).Parse(portTemplate))
-
-	adapterTmpl = template.Must(template.New("adapter").Funcs(template.FuncMap{
-		"title": titleCase,
-	}).Parse(adapterTemplate))
-
-	compositeTmpl = template.Must(template.New("composite").Funcs(template.FuncMap{
-		"title": titleCase,
-	}).Parse(compositeTemplate))
+func mustTemplate(name, text string) *template.Template {
+	return template.Must(template.New(name).Funcs(template.FuncMap{"title": titleCase}).Parse(text))
 }
 
 // titleCase converts a string to title case (first letter uppercase, rest lowercase).
@@ -112,17 +107,13 @@ func renderCAPI(group model.Group, symbols []model.Symbol, libraries []model.Lib
 
 	// Filter callbacks and event structs for this group
 	var groupCallbacks []model.Callback
-	var groupEventStructs []model.EventStruct
 	for _, cb := range callbacks {
 		if cb.Group == group.Name {
+			cb.Signature = sanitizeCallbackSignature(cb.Signature)
 			groupCallbacks = append(groupCallbacks, cb)
 		}
 	}
-	for _, es := range eventStructs {
-		if es.Group == group.Name {
-			groupEventStructs = append(groupEventStructs, es)
-		}
-	}
+	groupEventStructs := filterEventStructsByGroup(eventStructs, group.Name)
 	// Check if callbacks need unsafe
 	for _, cb := range groupCallbacks {
 		if strings.Contains(cb.Signature, "unsafe.Pointer") {
@@ -156,6 +147,10 @@ func renderCAPI(group model.Group, symbols []model.Symbol, libraries []model.Lib
 	return buf.Bytes(), nil
 }
 
+func sanitizeCallbackSignature(sig string) string {
+	return callbackFieldPattern.ReplaceAllString(sig, " uintptr")
+}
+
 // renderPort generates the outbound interface definitions.
 func renderPort(group model.Group, symbols []model.Symbol, eventStructs []model.EventStruct) ([]byte, error) {
 	groupSymbols := filterSymbolsByGroup(symbols, group.Name)
@@ -186,13 +181,7 @@ func renderPort(group model.Group, symbols []model.Symbol, eventStructs []model.
 		}
 	}
 
-	// Filter event structs for this group
-	var groupEventStructs []model.EventStruct
-	for _, es := range eventStructs {
-		if es.Group == group.Name {
-			groupEventStructs = append(groupEventStructs, es)
-		}
-	}
+	groupEventStructs := filterEventStructsByGroup(eventStructs, group.Name)
 
 	data := struct {
 		Group        model.Group
@@ -304,23 +293,23 @@ func filterSymbolsByGroup(symbols []model.Symbol, groupName string) []model.Symb
 	return result
 }
 
+func filterEventStructsByGroup(eventStructs []model.EventStruct, groupName string) []model.EventStruct {
+	var result []model.EventStruct
+	for _, es := range eventStructs {
+		if es.Group == groupName {
+			result = append(result, es)
+		}
+	}
+	return result
+}
+
 // toGoName converts a C function name like pw_init to a Go name like PWInit.
 func toGoName(cName string) string {
 	// Handle pw_ prefix specially
 	if strings.HasPrefix(cName, "pw_") {
-		name := cName[3:]
-		parts := strings.Split(name, "_")
-		for i, p := range parts {
-			parts[i] = titleCase(p)
-		}
-		return "PW" + strings.Join(parts, "")
+		return "PW" + toCamelCase(cName[3:])
 	}
-	// Generic conversion
-	parts := strings.Split(cName, "_")
-	for i, p := range parts {
-		parts[i] = titleCase(p)
-	}
-	return strings.Join(parts, "")
+	return toCamelCase(cName)
 }
 
 // toCamelCase converts a snake_case name like stream_playback to StreamPlayback.

@@ -4,6 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"sync/atomic"
+	"unsafe"
 )
 
 // UnderrunPolicy determines how to handle underruns
@@ -37,9 +39,7 @@ func (b *PCMBuffer) allocate() {
 
 // PlayerConfig holds configuration for the player
 type PlayerConfig struct {
-	// SampleRate is carried here for upcoming runtime format negotiation.
-	// It is not yet consumed by the core player but will be used when the
-	// StreamOps layer builds SPA params for PipeWire.
+	// SampleRate is the playback sample rate used when opening the stream.
 	SampleRate      int
 	FramesPerBuffer int
 	Channels        int
@@ -161,12 +161,13 @@ func (p *player) fail(err error) {
 // queues the buffer back. If any step fails, it routes the error
 // through p.fail.
 func (p *player) onProcess() {
-	p.mu.Lock()
 	ops := p.streamOps
-	sp := p.streamPtr
-	p.mu.Unlock()
+	if ops == nil {
+		return
+	}
 
-	if ops == nil || sp == nil {
+	sp := atomic.LoadPointer((*unsafe.Pointer)(unsafe.Pointer(&p.streamPtr)))
+	if sp == nil {
 		return
 	}
 
@@ -175,21 +176,26 @@ func (p *player) onProcess() {
 		return
 	}
 
-	view, err := newPWBufferView(bufPtr, p.config.Channels, p.config.FramesPerBuffer)
+	queueOnError := true
+	defer func() {
+		if err := ops.QueueBuffer(sp, bufPtr); err != nil && queueOnError {
+			p.fail(fmt.Errorf("queue buffer: %w", err))
+		}
+	}()
+
+	frames := p.config.FramesPerBuffer
+	view, err := newPWBufferView(bufPtr, p.config.Channels, frames)
 	if err != nil {
+		queueOnError = false
 		p.fail(fmt.Errorf("buffer view: %w", err))
 		return
 	}
 
-	frames, err := p.processPCM(view.PCM())
+	frames, err = p.processPCM(view.PCM())
 	if err != nil {
-		// processPCM error: do not queue the buffer; let existing
-		// state/error behavior stand.
+		queueOnError = false
 		return
 	}
 
 	view.Commit(frames)
-	if err := ops.QueueBuffer(sp, bufPtr); err != nil {
-		p.fail(fmt.Errorf("queue buffer: %w", err))
-	}
 }

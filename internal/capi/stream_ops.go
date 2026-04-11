@@ -6,6 +6,8 @@ import (
 	"sync"
 	"unsafe"
 
+	"github.com/ebitengine/purego"
+
 	portout "github.com/bnema/purego-pipewire/internal/ports/out"
 )
 
@@ -43,7 +45,7 @@ const (
 // Without this, the stack-allocated values in CreatePlaybackStream
 // would be collected while PipeWire still holds pointers to them.
 type streamCallbackStorage struct {
-	processCb func(unsafe.Pointer)
+	processCb uintptr
 	events    pw_stream_events
 }
 
@@ -78,12 +80,12 @@ func (s *streamOpsImpl) CreatePlaybackStream(loopPtr unsafe.Pointer, name string
 
 	// Build persistent callback storage that outlives this function.
 	storage := &streamCallbackStorage{}
-	storage.processCb = func(_ unsafe.Pointer) {
+	storage.processCb = purego.NewCallback(func(_ unsafe.Pointer) {
 		onProcess()
-	}
+	})
 	storage.events = pw_stream_events{
 		version: pwVersionStreamEvents,
-		process: &storage.processCb,
+		process: storage.processCb,
 	}
 
 	ptr := pw_stream_new_simple(
@@ -109,14 +111,6 @@ func (s *streamOpsImpl) CreatePlaybackStream(loopPtr unsafe.Pointer, name string
 }
 
 func (s *streamOpsImpl) ConnectPlaybackStream(streamPtr unsafe.Pointer, format portout.PlaybackFormat) error {
-	// Validate format before making the C call.
-	// FramesPerBuffer is not used by buildRawAudioParams but is still required
-	// for a well-formed playback setup.
-	if format.SampleRate <= 0 || format.Channels <= 0 || format.FramesPerBuffer <= 0 {
-		return fmt.Errorf("%w: SampleRate=%d, Channels=%d, FramesPerBuffer=%d",
-			ErrInvalidPlaybackFormat, format.SampleRate, format.Channels, format.FramesPerBuffer)
-	}
-
 	// Build the SPA POD params that describe the stream's audio format.
 	cp, err := buildRawAudioParams(format)
 	if err != nil {
