@@ -7,6 +7,12 @@ Linux only. `CGO_ENABLED=0`.
 > [!WARNING]
 > This is early stage. The generated binding layer is in place, but the handwritten API is still focused on runtime lifecycle and float32 playback. API may change.
 
+## Install
+
+```sh
+go get github.com/bnema/purego-pipewire
+```
+
 ## Architecture
 
 The binding layer is **generated** from the checked-in model in `gen/pipewire.json`. The generator produces:
