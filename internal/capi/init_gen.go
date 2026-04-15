@@ -2,7 +2,7 @@
 
 package capi
 
-import "github.com/ebitengine/purego"
+import "github.com/bnema/purego"
 
 
 // pw_initFunc is the function type for pw_init.

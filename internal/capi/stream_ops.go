@@ -6,7 +6,7 @@ import (
 	"sync"
 	"unsafe"
 
-	"github.com/ebitengine/purego"
+	"github.com/bnema/purego"
 
 	portout "github.com/bnema/purego-pipewire/internal/ports/out"
 )

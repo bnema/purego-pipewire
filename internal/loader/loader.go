@@ -5,7 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/ebitengine/purego"
+	"github.com/bnema/purego"
 )
 
 type Handles struct {
