@@ -75,8 +75,8 @@ func TestPlayerStopIsRestartableButCloseIsTerminal(t *testing.T) {
 	mockOps.EXPECT().SetStreamActive(fakeStream, true).Return(nil)
 	// Close tears down resources
 	mockOps.EXPECT().DisconnectStream(fakeStream).Return(nil)
-	mockOps.EXPECT().DestroyStream(fakeStream).Return()
 	mockOps.EXPECT().QuitMainLoop(fakeLoop).Return()
+	mockOps.EXPECT().DestroyStream(fakeStream).Return()
 	mockOps.EXPECT().DestroyMainLoop(fakeLoop).Return()
 
 	p := newPlayer(cfg, PlayerCallbacks{})
@@ -302,8 +302,8 @@ func TestPlayerCloseIsIdempotent(t *testing.T) {
 
 	wg := expectStartWithSync(mockOps, fakeLoop, fakeStream, cfg)
 	mockOps.EXPECT().DisconnectStream(fakeStream).Return(nil)
-	mockOps.EXPECT().DestroyStream(fakeStream).Return()
 	mockOps.EXPECT().QuitMainLoop(fakeLoop).Return()
+	mockOps.EXPECT().DestroyStream(fakeStream).Return()
 	mockOps.EXPECT().DestroyMainLoop(fakeLoop).Return()
 
 	p := newPlayer(cfg, PlayerCallbacks{})
@@ -433,10 +433,10 @@ func TestPlayerCloseTeardownCallsStreamOps(t *testing.T) {
 	fakeStream := opaqueTestPtr()
 	fakeLoop := opaqueTestPtr()
 
-	// Expect teardown calls in order: DisconnectStream, DestroyStream, QuitMainLoop, DestroyMainLoop.
+	// Expect teardown calls in order: DisconnectStream, QuitMainLoop, DestroyStream, DestroyMainLoop.
 	mockOps.EXPECT().DisconnectStream(fakeStream).Return(nil)
-	mockOps.EXPECT().DestroyStream(fakeStream).Return()
 	mockOps.EXPECT().QuitMainLoop(fakeLoop).Return()
+	mockOps.EXPECT().DestroyStream(fakeStream).Return()
 	mockOps.EXPECT().DestroyMainLoop(fakeLoop).Return()
 
 	p := newPlayer(PlayerConfig{}, PlayerCallbacks{})
@@ -487,8 +487,8 @@ func TestPlayerRepeatedCloseIsSafe(t *testing.T) {
 
 	// Only expect one set of teardown calls.
 	mockOps.EXPECT().DisconnectStream(fakeStream).Return(nil)
-	mockOps.EXPECT().DestroyStream(fakeStream).Return()
 	mockOps.EXPECT().QuitMainLoop(fakeLoop).Return()
+	mockOps.EXPECT().DestroyStream(fakeStream).Return()
 	mockOps.EXPECT().DestroyMainLoop(fakeLoop).Return()
 
 	p := newPlayer(PlayerConfig{}, PlayerCallbacks{})
@@ -551,6 +551,120 @@ func TestPlayerTeardownWithOnlyLoopPtr(t *testing.T) {
 	}
 }
 
+func TestPlayerCloseWaitsForMainLoopExitBeforeDestroy(t *testing.T) {
+	mockOps := mocks.NewMockStreamOps(t)
+	fakeLoop := opaqueTestPtr()
+	loopDone := make(chan struct{})
+	quitCalled := make(chan struct{})
+	destroyCalled := make(chan struct{})
+	closeReturned := make(chan error, 1)
+
+	mockOps.EXPECT().QuitMainLoop(fakeLoop).Run(func(unsafe.Pointer) {
+		close(quitCalled)
+	}).Return()
+	mockOps.EXPECT().DestroyMainLoop(fakeLoop).Run(func(unsafe.Pointer) {
+		close(destroyCalled)
+	}).Return()
+
+	p := newPlayer(PlayerConfig{}, PlayerCallbacks{})
+	p.streamOps = mockOps
+	p.loopPtr = fakeLoop
+	p.loopDone = loopDone
+	p.setState(PlayerStatePlaying)
+
+	go func() {
+		closeReturned <- p.Close()
+	}()
+
+	select {
+	case <-quitCalled:
+	case <-time.After(2 * time.Second):
+		t.Fatal("timed out waiting for QuitMainLoop")
+	}
+
+	select {
+	case <-destroyCalled:
+		t.Fatal("DestroyMainLoop called before loopDone was closed")
+	case <-time.After(100 * time.Millisecond):
+	}
+
+	close(loopDone)
+
+	select {
+	case err := <-closeReturned:
+		if err != nil {
+			t.Fatalf("Close failed: %v", err)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("timed out waiting for Close to return")
+	}
+
+	select {
+	case <-destroyCalled:
+	case <-time.After(2 * time.Second):
+		t.Fatal("timed out waiting for DestroyMainLoop after loopDone")
+	}
+}
+
+func TestPlayerCloseWaitsForMainLoopExitBeforeDestroyingStream(t *testing.T) {
+	mockOps := mocks.NewMockStreamOps(t)
+	fakeLoop := opaqueTestPtr()
+	fakeStream := opaqueTestPtr()
+	loopDone := make(chan struct{})
+	quitCalled := make(chan struct{})
+	streamDestroyed := make(chan struct{})
+	closeReturned := make(chan error, 1)
+
+	mockOps.EXPECT().DisconnectStream(fakeStream).Return(nil)
+	mockOps.EXPECT().QuitMainLoop(fakeLoop).Run(func(unsafe.Pointer) {
+		close(quitCalled)
+	}).Return()
+	mockOps.EXPECT().DestroyStream(fakeStream).Run(func(unsafe.Pointer) {
+		close(streamDestroyed)
+	}).Return()
+	mockOps.EXPECT().DestroyMainLoop(fakeLoop).Return()
+
+	p := newPlayer(PlayerConfig{}, PlayerCallbacks{})
+	p.streamOps = mockOps
+	p.streamPtr = fakeStream
+	p.loopPtr = fakeLoop
+	p.loopDone = loopDone
+	p.setState(PlayerStatePlaying)
+
+	go func() {
+		closeReturned <- p.Close()
+	}()
+
+	select {
+	case <-quitCalled:
+	case <-time.After(2 * time.Second):
+		t.Fatal("timed out waiting for QuitMainLoop")
+	}
+
+	select {
+	case <-streamDestroyed:
+		t.Fatal("DestroyStream called before loopDone was closed")
+	case <-time.After(100 * time.Millisecond):
+	}
+
+	close(loopDone)
+
+	select {
+	case err := <-closeReturned:
+		if err != nil {
+			t.Fatalf("Close failed: %v", err)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("timed out waiting for Close to return")
+	}
+
+	select {
+	case <-streamDestroyed:
+	case <-time.After(2 * time.Second):
+		t.Fatal("timed out waiting for DestroyStream after loopDone")
+	}
+}
+
 // TestPlayerTeardownCallsDisconnectStream verifies that teardown calls
 // DisconnectStream before DestroyStream when a stream exists.
 func TestPlayerTeardownCallsDisconnectStream(t *testing.T) {
@@ -558,10 +672,10 @@ func TestPlayerTeardownCallsDisconnectStream(t *testing.T) {
 	fakeStream := opaqueTestPtr()
 	fakeLoop := opaqueTestPtr()
 
-	// Expect disconnect before destroy
+	// Expect disconnect before destroy, and stream destroy only after loop shutdown begins.
 	mockOps.EXPECT().DisconnectStream(fakeStream).Return(nil)
-	mockOps.EXPECT().DestroyStream(fakeStream).Return()
 	mockOps.EXPECT().QuitMainLoop(fakeLoop).Return()
+	mockOps.EXPECT().DestroyStream(fakeStream).Return()
 	mockOps.EXPECT().DestroyMainLoop(fakeLoop).Return()
 
 	p := newPlayer(PlayerConfig{}, PlayerCallbacks{})
@@ -583,10 +697,10 @@ func TestPlayerTeardownContinuesOnDisconnectError(t *testing.T) {
 	fakeLoop := opaqueTestPtr()
 	disconnectErr := errors.New("disconnect failed")
 
-	// Disconnect fails, but destroy should still be called
+	// Disconnect fails, but teardown should still quit the loop and destroy the stream.
 	mockOps.EXPECT().DisconnectStream(fakeStream).Return(disconnectErr)
-	mockOps.EXPECT().DestroyStream(fakeStream).Return()
 	mockOps.EXPECT().QuitMainLoop(fakeLoop).Return()
+	mockOps.EXPECT().DestroyStream(fakeStream).Return()
 	mockOps.EXPECT().DestroyMainLoop(fakeLoop).Return()
 
 	p := newPlayer(PlayerConfig{}, PlayerCallbacks{})
@@ -617,10 +731,10 @@ func TestPlayerRestartActivationFailureCleansUpResources(t *testing.T) {
 	mockOps.EXPECT().SetStreamActive(fakeStream, false).Return(nil)
 	// Restart: activation fails → teardown cleans up
 	mockOps.EXPECT().SetStreamActive(fakeStream, true).Return(activateErr)
-	// teardown should call DisconnectStream, DestroyStream, QuitMainLoop, DestroyMainLoop
+	// teardown should call DisconnectStream, QuitMainLoop, DestroyStream, DestroyMainLoop
 	mockOps.EXPECT().DisconnectStream(fakeStream).Return(nil)
-	mockOps.EXPECT().DestroyStream(fakeStream).Return()
 	mockOps.EXPECT().QuitMainLoop(fakeLoop).Return()
+	mockOps.EXPECT().DestroyStream(fakeStream).Return()
 	mockOps.EXPECT().DestroyMainLoop(fakeLoop).Return()
 
 	p := newPlayer(cfg, PlayerCallbacks{})

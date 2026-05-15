@@ -3,6 +3,7 @@ package capi
 import (
 	"errors"
 	"fmt"
+	"runtime"
 	"sync"
 	"unsafe"
 
@@ -59,10 +60,17 @@ type streamCallbackStorage struct {
 //     PipeWire reads the SPA POD params asynchronously during format negotiation, so the
 //     backing byte storage must remain live until DestroyStream releases it.
 //   - Both maps are keyed by the stream pointer and must be cleaned up in DestroyStream.
+type streamLoopContext struct {
+	mainLoop unsafe.Pointer
+	pwLoop   unsafe.Pointer
+}
+
 type streamOpsImpl struct {
 	mu           sync.Mutex
 	pinned       map[unsafe.Pointer]*streamCallbackStorage // keyed by stream ptr
 	pinnedParams map[unsafe.Pointer]*connectParams         // keyed by stream ptr
+	streamLoops  map[unsafe.Pointer]streamLoopContext      // keyed by stream ptr
+	runningLoops map[unsafe.Pointer]bool                   // keyed by main loop ptr
 }
 
 // Verify interface compliance at compile time.
@@ -104,7 +112,11 @@ func (s *streamOpsImpl) CreatePlaybackStream(loopPtr unsafe.Pointer, name string
 	if s.pinned == nil {
 		s.pinned = make(map[unsafe.Pointer]*streamCallbackStorage)
 	}
+	if s.streamLoops == nil {
+		s.streamLoops = make(map[unsafe.Pointer]streamLoopContext)
+	}
 	s.pinned[ptr] = storage
+	s.streamLoops[ptr] = streamLoopContext{mainLoop: loopPtr, pwLoop: pwLoop}
 	s.mu.Unlock()
 
 	return ptr, nil
@@ -138,7 +150,9 @@ func (s *streamOpsImpl) ConnectPlaybackStream(streamPtr unsafe.Pointer, format p
 }
 
 func (s *streamOpsImpl) SetStreamActive(streamPtr unsafe.Pointer, active bool) error {
-	ret := pw_stream_set_active(streamPtr, active)
+	ret := s.callStreamWithLoopLock(streamPtr, func() int32 {
+		return pw_stream_set_active(streamPtr, active)
+	})
 	if ret < 0 {
 		return &PWError{Func: "pw_stream_set_active", Code: ret}
 	}
@@ -160,27 +174,37 @@ func (s *streamOpsImpl) QueueBuffer(streamPtr unsafe.Pointer, bufPtr unsafe.Poin
 // DisconnectStream disconnects the stream from its port.
 // Returns a PWError if the operation fails.
 func (s *streamOpsImpl) DisconnectStream(streamPtr unsafe.Pointer) error {
-	ret := pw_stream_disconnect(streamPtr)
+	ret := s.callStreamWithLoopLock(streamPtr, func() int32 {
+		return pw_stream_disconnect(streamPtr)
+	})
 	if ret < 0 {
 		return &PWError{Func: "pw_stream_disconnect", Code: ret}
 	}
 	return nil
 }
 
+// DestroyStream releases the pw_stream and associated pinned Go storage.
+// Callers must ensure the owning main loop has already stopped, or that they
+// otherwise satisfy PipeWire's required stream context, before invoking this.
 func (s *streamOpsImpl) DestroyStream(streamPtr unsafe.Pointer) {
 	s.mu.Lock()
-	if _, alive := s.pinned[streamPtr]; !alive {
+	storage, alive := s.pinned[streamPtr]
+	if !alive {
 		// Already destroyed or never tracked — skip.
 		s.mu.Unlock()
 		return
 	}
-	// Unpin callback storage and connect params — safe now that the stream is being destroyed.
+	params := s.pinnedParams[streamPtr]
 	delete(s.pinned, streamPtr)
 	delete(s.pinnedParams, streamPtr)
+	delete(s.streamLoops, streamPtr)
 	s.mu.Unlock()
 
-	// Use the generated pw_stream_destroy binding for proper cleanup.
 	pw_stream_destroy(streamPtr)
+
+	// Keep callback and format storage alive until after pw_stream_destroy returns.
+	runtime.KeepAlive(storage)
+	runtime.KeepAlive(params)
 }
 
 func (s *streamOpsImpl) CreateMainLoop() (unsafe.Pointer, error) {
@@ -192,7 +216,19 @@ func (s *streamOpsImpl) CreateMainLoop() (unsafe.Pointer, error) {
 }
 
 func (s *streamOpsImpl) RunMainLoop(loopPtr unsafe.Pointer) error {
+	s.mu.Lock()
+	if s.runningLoops == nil {
+		s.runningLoops = make(map[unsafe.Pointer]bool)
+	}
+	s.runningLoops[loopPtr] = true
+	s.mu.Unlock()
+
 	ret := pw_main_loop_run(loopPtr)
+
+	s.mu.Lock()
+	delete(s.runningLoops, loopPtr)
+	s.mu.Unlock()
+
 	if ret < 0 {
 		return &PWError{Func: "pw_main_loop_run", Code: ret}
 	}
@@ -206,6 +242,27 @@ func (s *streamOpsImpl) QuitMainLoop(loopPtr unsafe.Pointer) {
 
 func (s *streamOpsImpl) DestroyMainLoop(loopPtr unsafe.Pointer) {
 	pw_main_loop_destroy(loopPtr)
+}
+
+func (s *streamOpsImpl) callStreamWithLoopLock(streamPtr unsafe.Pointer, fn func() int32) int32 {
+	s.mu.Lock()
+	ctx, running := s.streamLoopContextLocked(streamPtr)
+	s.mu.Unlock()
+	if running && ctx.pwLoop != nil {
+		return withLoopLock(ctx.pwLoop, fn)
+	}
+	return fn()
+}
+
+func (s *streamOpsImpl) streamLoopContextLocked(streamPtr unsafe.Pointer) (streamLoopContext, bool) {
+	if s.streamLoops == nil {
+		return streamLoopContext{}, false
+	}
+	ctx, ok := s.streamLoops[streamPtr]
+	if !ok {
+		return streamLoopContext{}, false
+	}
+	return ctx, s.runningLoops != nil && s.runningLoops[ctx.mainLoop]
 }
 
 // DefaultStreamOps returns a StreamOps implementation backed by the real
