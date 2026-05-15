@@ -50,6 +50,121 @@ func TestDestroyStreamCallsPwStreamDestroy(t *testing.T) {
 	}
 }
 
+func TestSetStreamActiveUsesOwningLoopLockWhenRunning(t *testing.T) {
+	origWithLoopLock := withLoopLock
+	origSetActive := pw_stream_set_active
+	t.Cleanup(func() {
+		withLoopLock = origWithLoopLock
+		pw_stream_set_active = origSetActive
+	})
+
+	fakeStream := opaquePtr()
+	fakeMainLoop := opaquePtr()
+	fakePWLoop := opaquePtr()
+	ops := &streamOpsImpl{
+		streamLoops:  map[unsafe.Pointer]streamLoopContext{fakeStream: {mainLoop: fakeMainLoop, pwLoop: fakePWLoop}},
+		runningLoops: map[unsafe.Pointer]bool{fakeMainLoop: true},
+	}
+
+	var lockedLoop unsafe.Pointer
+	withLoopLock = func(loop unsafe.Pointer, fn func() int32) int32 {
+		lockedLoop = loop
+		return fn()
+	}
+	var setActiveStream unsafe.Pointer
+	var setActiveValue bool
+	pw_stream_set_active = func(stream unsafe.Pointer, active bool) int32 {
+		setActiveStream = stream
+		setActiveValue = active
+		return 0
+	}
+
+	if err := ops.SetStreamActive(fakeStream, false); err != nil {
+		t.Fatalf("SetStreamActive returned error: %v", err)
+	}
+	if lockedLoop != fakePWLoop {
+		t.Fatalf("locked loop = %v, want %v", lockedLoop, fakePWLoop)
+	}
+	if setActiveStream != fakeStream || setActiveValue {
+		t.Fatalf("pw_stream_set_active called with (%v, %v), want (%v, false)", setActiveStream, setActiveValue, fakeStream)
+	}
+}
+
+func TestDestroyStreamUnpinsAndDestroys(t *testing.T) {
+	origDestroy := pw_stream_destroy
+	t.Cleanup(func() {
+		pw_stream_destroy = origDestroy
+	})
+
+	fakeStream := opaquePtr()
+	fakeMainLoop := opaquePtr()
+	fakePWLoop := opaquePtr()
+	ops := &streamOpsImpl{
+		pinned:       map[unsafe.Pointer]*streamCallbackStorage{fakeStream: {}},
+		pinnedParams: map[unsafe.Pointer]*connectParams{fakeStream: {}},
+		streamLoops:  map[unsafe.Pointer]streamLoopContext{fakeStream: {mainLoop: fakeMainLoop, pwLoop: fakePWLoop}},
+		runningLoops: map[unsafe.Pointer]bool{fakeMainLoop: true},
+	}
+
+	var destroyedStream unsafe.Pointer
+	pw_stream_destroy = func(stream unsafe.Pointer) {
+		destroyedStream = stream
+	}
+
+	ops.DestroyStream(fakeStream)
+
+	if destroyedStream != fakeStream {
+		t.Fatalf("destroyed stream = %v, want %v", destroyedStream, fakeStream)
+	}
+	if _, ok := ops.pinned[fakeStream]; ok {
+		t.Fatal("expected pinned callback storage to be removed")
+	}
+	if _, ok := ops.pinnedParams[fakeStream]; ok {
+		t.Fatal("expected pinned params to be removed")
+	}
+	if _, ok := ops.streamLoops[fakeStream]; ok {
+		t.Fatal("expected stream loop context to be removed")
+	}
+}
+
+func TestDisconnectStreamUsesOwningLoopLockWhenRunning(t *testing.T) {
+	origWithLoopLock := withLoopLock
+	origDisconnect := pw_stream_disconnect
+	t.Cleanup(func() {
+		withLoopLock = origWithLoopLock
+		pw_stream_disconnect = origDisconnect
+	})
+
+	fakeStream := opaquePtr()
+	fakeMainLoop := opaquePtr()
+	fakePWLoop := opaquePtr()
+	ops := &streamOpsImpl{
+		streamLoops:  map[unsafe.Pointer]streamLoopContext{fakeStream: {mainLoop: fakeMainLoop, pwLoop: fakePWLoop}},
+		runningLoops: map[unsafe.Pointer]bool{fakeMainLoop: true},
+	}
+
+	var lockedLoop unsafe.Pointer
+	withLoopLock = func(loop unsafe.Pointer, fn func() int32) int32 {
+		lockedLoop = loop
+		return fn()
+	}
+	var disconnectedStream unsafe.Pointer
+	pw_stream_disconnect = func(stream unsafe.Pointer) int32 {
+		disconnectedStream = stream
+		return 0
+	}
+
+	if err := ops.DisconnectStream(fakeStream); err != nil {
+		t.Fatalf("DisconnectStream returned error: %v", err)
+	}
+	if lockedLoop != fakePWLoop {
+		t.Fatalf("locked loop = %v, want %v", lockedLoop, fakePWLoop)
+	}
+	if disconnectedStream != fakeStream {
+		t.Fatalf("disconnected stream = %v, want %v", disconnectedStream, fakeStream)
+	}
+}
+
 // TestPWStreamEventsUsesFunctionPointerABI verifies that the generated callback
 // fields use raw function-pointer storage, not Go func pointers.
 func TestPWStreamEventsUsesFunctionPointerABI(t *testing.T) {
@@ -447,6 +562,31 @@ func TestRunMainLoopReturnsNilOnSuccess(t *testing.T) {
 	if err != nil {
 		t.Fatalf("expected nil on success, got %v", err)
 	}
+}
+
+func TestRunMainLoopRemovesRunningLoopOnPanic(t *testing.T) {
+	origRun := pw_main_loop_run
+	t.Cleanup(func() { pw_main_loop_run = origRun })
+
+	pw_main_loop_run = func(loop unsafe.Pointer) int32 {
+		panic("boom")
+	}
+
+	ops := &streamOpsImpl{}
+	fakeLoop := opaquePtr()
+
+	defer func() {
+		if r := recover(); r == nil {
+			t.Fatal("expected panic from pw_main_loop_run")
+		}
+		ops.mu.Lock()
+		defer ops.mu.Unlock()
+		if len(ops.runningLoops) != 0 {
+			t.Fatalf("expected runningLoops to be cleaned up, got %d entries", len(ops.runningLoops))
+		}
+	}()
+
+	_ = ops.RunMainLoop(fakeLoop)
 }
 
 // TestCreatePlaybackStreamUsesPWLoopFromMainLoop verifies that CreatePlaybackStream

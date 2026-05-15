@@ -36,6 +36,7 @@ type player struct {
 	streamOps portout.StreamOps
 	streamPtr unsafe.Pointer
 	loopPtr   unsafe.Pointer
+	loopDone  chan struct{}
 }
 
 // newPlayer creates a new player instance
@@ -201,13 +202,16 @@ func (p *player) startCreateResourcesAndActivate() error {
 	}
 
 	// All steps succeeded — store owned resources
+	loopDone := make(chan struct{})
 	p.mu.Lock()
 	p.loopPtr = loopPtr
+	p.loopDone = loopDone
 	atomic.StorePointer((*unsafe.Pointer)(unsafe.Pointer(&p.streamPtr)), streamPtr)
 	p.mu.Unlock()
 
 	// Start main loop in an internal goroutine
 	go func() {
+		defer close(loopDone)
 		if err := p.streamOps.RunMainLoop(loopPtr); err != nil {
 			if state := p.State(); state != PlayerStateClosing && state != PlayerStateClosed {
 				p.fail(err)
@@ -336,30 +340,46 @@ func (p *player) deactivateStream() error {
 
 // teardown releases player-owned stream and main-loop resources through
 // StreamOps. Safe to call when fields are nil or on repeated invocation.
-// DisconnectStream is called before DestroyStream as best-effort cleanup;
-// if disconnect fails, teardown continues (destroy is the definitive release).
+// When a main loop exists, DisconnectStream is issued first while the loop is
+// still running, then the loop is quit and awaited, and only then is the
+// stream destroyed. This ordering avoids destroying a pw_stream while its
+// main loop is still active.
 func (p *player) teardown() {
 	p.mu.Lock()
 	streamOps := p.streamOps
 	streamPtr := atomic.LoadPointer((*unsafe.Pointer)(unsafe.Pointer(&p.streamPtr)))
 	loopPtr := p.loopPtr
+	loopDone := p.loopDone
 	atomic.StorePointer((*unsafe.Pointer)(unsafe.Pointer(&p.streamPtr)), nil)
 	p.loopPtr = nil
+	p.loopDone = nil
 	p.mu.Unlock()
 
 	if streamOps == nil {
 		return
 	}
 
-	// Disconnect then destroy stream (disconnect is best-effort, destroy is definitive).
+	// If a stream exists, disconnect it first while the loop is still alive.
 	if streamPtr != nil {
 		_ = streamOps.DisconnectStream(streamPtr) // Best-effort cleanup
-		streamOps.DestroyStream(streamPtr)
 	}
 
 	// Quit then destroy the main loop.
+	// Never destroy the main loop until RunMainLoop has actually returned;
+	// destroying while pw_main_loop_run is still active can crash in PipeWire.
 	if loopPtr != nil {
 		streamOps.QuitMainLoop(loopPtr)
+		if loopDone != nil {
+			<-loopDone
+		}
+	}
+
+	// Only destroy the stream after the loop has stopped so pw_stream_destroy
+	// can safely flush any queued loop callbacks before freeing stream state.
+	if streamPtr != nil {
+		streamOps.DestroyStream(streamPtr)
+	}
+	if loopPtr != nil {
 		streamOps.DestroyMainLoop(loopPtr)
 	}
 }
