@@ -222,13 +222,13 @@ func (s *streamOpsImpl) RunMainLoop(loopPtr unsafe.Pointer) error {
 	}
 	s.runningLoops[loopPtr] = true
 	s.mu.Unlock()
+	defer func() {
+		s.mu.Lock()
+		delete(s.runningLoops, loopPtr)
+		s.mu.Unlock()
+	}()
 
 	ret := pw_main_loop_run(loopPtr)
-
-	s.mu.Lock()
-	delete(s.runningLoops, loopPtr)
-	s.mu.Unlock()
-
 	if ret < 0 {
 		return &PWError{Func: "pw_main_loop_run", Code: ret}
 	}

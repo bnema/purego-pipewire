@@ -564,6 +564,31 @@ func TestRunMainLoopReturnsNilOnSuccess(t *testing.T) {
 	}
 }
 
+func TestRunMainLoopRemovesRunningLoopOnPanic(t *testing.T) {
+	origRun := pw_main_loop_run
+	t.Cleanup(func() { pw_main_loop_run = origRun })
+
+	pw_main_loop_run = func(loop unsafe.Pointer) int32 {
+		panic("boom")
+	}
+
+	ops := &streamOpsImpl{}
+	fakeLoop := opaquePtr()
+
+	defer func() {
+		if r := recover(); r == nil {
+			t.Fatal("expected panic from pw_main_loop_run")
+		}
+		ops.mu.Lock()
+		defer ops.mu.Unlock()
+		if len(ops.runningLoops) != 0 {
+			t.Fatalf("expected runningLoops to be cleaned up, got %d entries", len(ops.runningLoops))
+		}
+	}()
+
+	_ = ops.RunMainLoop(fakeLoop)
+}
+
 // TestCreatePlaybackStreamUsesPWLoopFromMainLoop verifies that CreatePlaybackStream
 // calls pw_main_loop_get_loop to obtain the pw_loop pointer and passes it to
 // pw_stream_new_simple (not the raw main loop pointer).
