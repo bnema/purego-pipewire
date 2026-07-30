@@ -93,6 +93,7 @@ type Player interface {
 	Close() error
 	State() PlayerState
 	SetControl(values ...spa.PropValue) error
+	GetControl(id spa.Prop) *spa.ControlInfo
 }
 
 // ErrInvalidPlayerConfig is returned when the player configuration is invalid.
@@ -146,6 +147,13 @@ func (p *playerImpl) SetControl(values ...spa.PropValue) error {
 		return errors.New("player not initialized")
 	}
 	return p.internal.SetControl(values...)
+}
+
+func (p *playerImpl) GetControl(id spa.Prop) *spa.ControlInfo {
+	if p.internal == nil {
+		return nil
+	}
+	return p.internal.GetControl(id)
 }
 
 // NewPlayer creates a new audio player with the given configuration and callbacks.

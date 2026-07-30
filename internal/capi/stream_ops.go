@@ -186,6 +186,58 @@ func (s *streamOpsImpl) SetStreamControl(streamPtr unsafe.Pointer, controls ...s
 	return nil
 }
 
+// pwStreamControl mirrors struct pw_stream_control from <pipewire/stream.h>.
+type pwStreamControl struct {
+	name      *byte
+	flags     uint32
+	def       float32
+	min       float32
+	max       float32
+	values    *float32
+	nValues   uint32
+	maxValues uint32
+}
+
+// GetStreamControl reads a control's current value. Returns nil if the
+// stream doesn't expose a control with that id, mirroring pw_stream_get_control
+// itself returning NULL.
+func (s *streamOpsImpl) GetStreamControl(streamPtr unsafe.Pointer, id spa.Prop) *spa.ControlInfo {
+	ptr := pw_stream_get_control(streamPtr, uint32(id))
+	if ptr == nil {
+		return nil
+	}
+
+	c := (*pwStreamControl)(ptr)
+	info := &spa.ControlInfo{
+		Name: GoString(uintptr(unsafe.Pointer(c.name))),
+		Def:  c.def,
+		Min:  c.min,
+		Max:  c.max,
+	}
+	if c.nValues > 0 && c.values != nil {
+		info.Values = append([]float32(nil), unsafe.Slice(c.values, int(c.nValues))...)
+	}
+	return info
+}
+
+// GoString copies a char* to a Go string.
+// This function was copied from purego
+func GoString(c uintptr) string {
+	// We take the address and then dereference it to trick go vet from creating a possible misuse of unsafe.Pointer
+	ptr := *(*unsafe.Pointer)(unsafe.Pointer(&c))
+	if ptr == nil {
+		return ""
+	}
+	var length int
+	for {
+		if *(*byte)(unsafe.Add(ptr, uintptr(length))) == '\x00' {
+			break
+		}
+		length++
+	}
+	return string(unsafe.Slice((*byte)(ptr), length))
+}
+
 func (s *streamOpsImpl) DequeueBuffer(streamPtr unsafe.Pointer) unsafe.Pointer {
 	return pw_stream_dequeue_buffer(streamPtr)
 }

@@ -35,6 +35,17 @@ type PropValue struct {
 	Values []float32
 }
 
+// ControlInfo describes a stream control's current value and bounds, as
+// returned by pw_stream_get_control. It mirrors struct pw_stream_control
+// from <pipewire/stream.h>.
+type ControlInfo struct {
+	Name   string
+	Def    float32
+	Min    float32
+	Max    float32
+	Values []float32
+}
+
 // Audio related properties who don't have an underlying SPA type
 // must have their values constructed per context.
 const (

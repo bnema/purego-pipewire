@@ -30,6 +30,9 @@ func (o *callbackOps) SetStreamActive(unsafe.Pointer, bool) error {
 func (o *callbackOps) SetStreamControl(unsafe.Pointer, ...spa.PropValue) error {
 	return errors.New("not implemented")
 }
+func (o *callbackOps) GetStreamControl(unsafe.Pointer, spa.Prop) *spa.ControlInfo {
+	return nil
+}
 func (o *callbackOps) DequeueBuffer(unsafe.Pointer) unsafe.Pointer {
 	if o.dequeueAt >= len(o.buffers) {
 		return nil

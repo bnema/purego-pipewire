@@ -60,6 +60,10 @@ func (a *StreamPlaybackCAPIAdapter) PWStreamSetControl(stream unsafe.Pointer, id
 	return pw_stream_set_control(stream, id, n_values, values, rest...)
 }
 
+func (a *StreamPlaybackCAPIAdapter) PWStreamGetControl(stream unsafe.Pointer, id uint32) unsafe.Pointer {
+	return pw_stream_get_control(stream, id)
+}
+
 func (a *StreamPlaybackCAPIAdapter) PWStreamDisconnect(stream unsafe.Pointer) int32 {
 	return pw_stream_disconnect(stream)
 }
