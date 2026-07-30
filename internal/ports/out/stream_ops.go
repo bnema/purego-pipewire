@@ -1,6 +1,10 @@
 package out
 
-import "unsafe"
+import (
+	"unsafe"
+
+	"github.com/bnema/purego-pipewire/spa"
+)
 
 // PlaybackFormat describes the audio format used when connecting a playback
 // stream.
@@ -25,6 +29,9 @@ type StreamOps interface {
 
 	// SetStreamActive activates or deactivates the stream.
 	SetStreamActive(streamPtr unsafe.Pointer, active bool) error
+
+	// SetStreamControl sets one or more control values on the stream.
+	SetStreamControl(streamPtr unsafe.Pointer, controls ...spa.PropValue) error
 
 	// DequeueBuffer dequeues a buffer from the stream for writing.
 	// Returns nil if no buffer is available.

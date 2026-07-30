@@ -10,6 +10,7 @@ import (
 	"github.com/bnema/purego"
 
 	portout "github.com/bnema/purego-pipewire/internal/ports/out"
+	"github.com/bnema/purego-pipewire/spa"
 )
 
 // PWError represents a PipeWire C API error with the function name and return code.
@@ -155,6 +156,32 @@ func (s *streamOpsImpl) SetStreamActive(streamPtr unsafe.Pointer, active bool) e
 	})
 	if ret < 0 {
 		return &PWError{Func: "pw_stream_set_active", Code: ret}
+	}
+	return nil
+}
+
+func (s *streamOpsImpl) SetStreamControl(streamPtr unsafe.Pointer, controls ...spa.PropValue) error {
+	if len(controls) == 0 {
+		return fmt.Errorf("pw_stream_set_control: at least one control is required")
+	}
+	for _, c := range controls {
+		if len(c.Values) == 0 {
+			return fmt.Errorf("pw_stream_set_control: values must not be empty")
+		}
+	}
+
+	first := controls[0]
+	args := make([]any, 0, 3*(len(controls)-1)+1)
+	for _, c := range controls[1:] {
+		args = append(args, uint32(c.ID), uint32(len(c.Values)), &c.Values[0])
+	}
+	args = append(args, uint32(0)) // Sentinel, +1
+
+	ret := s.callStreamWithLoopLock(streamPtr, func() int32 {
+		return pw_stream_set_control(streamPtr, uint32(first.ID), uint32(len(first.Values)), &first.Values[0], args...)
+	})
+	if ret < 0 {
+		return &PWError{Func: "pw_stream_set_control", Code: ret}
 	}
 	return nil
 }

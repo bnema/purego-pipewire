@@ -8,6 +8,7 @@ import (
 	"unsafe"
 
 	"github.com/bnema/purego-pipewire/internal/ports/out"
+	"github.com/bnema/purego-pipewire/spa"
 	mock "github.com/stretchr/testify/mock"
 )
 
@@ -612,6 +613,72 @@ func (_c *MockStreamOps_SetStreamActive_Call) Return(err error) *MockStreamOps_S
 }
 
 func (_c *MockStreamOps_SetStreamActive_Call) RunAndReturn(run func(streamPtr unsafe.Pointer, active bool) error) *MockStreamOps_SetStreamActive_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// SetStreamControl provides a mock function for the type MockStreamOps
+func (_mock *MockStreamOps) SetStreamControl(streamPtr unsafe.Pointer, controls ...spa.PropValue) error {
+	var tmpRet mock.Arguments
+	if len(controls) > 0 {
+		tmpRet = _mock.Called(streamPtr, controls)
+	} else {
+		tmpRet = _mock.Called(streamPtr)
+	}
+	ret := tmpRet
+
+	if len(ret) == 0 {
+		panic("no return value specified for SetStreamControl")
+	}
+
+	var r0 error
+	if returnFunc, ok := ret.Get(0).(func(unsafe.Pointer, ...spa.PropValue) error); ok {
+		r0 = returnFunc(streamPtr, controls...)
+	} else {
+		r0 = ret.Error(0)
+	}
+	return r0
+}
+
+// MockStreamOps_SetStreamControl_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetStreamControl'
+type MockStreamOps_SetStreamControl_Call struct {
+	*mock.Call
+}
+
+// SetStreamControl is a helper method to define mock.On call
+//   - streamPtr unsafe.Pointer
+//   - controls ...spa.PropValue
+func (_e *MockStreamOps_Expecter) SetStreamControl(streamPtr any, controls ...any) *MockStreamOps_SetStreamControl_Call {
+	return &MockStreamOps_SetStreamControl_Call{Call: _e.mock.On("SetStreamControl",
+		append([]any{streamPtr}, controls...)...)}
+}
+
+func (_c *MockStreamOps_SetStreamControl_Call) Run(run func(streamPtr unsafe.Pointer, controls ...spa.PropValue)) *MockStreamOps_SetStreamControl_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 unsafe.Pointer
+		if args[0] != nil {
+			arg0 = args[0].(unsafe.Pointer)
+		}
+		var arg1 []spa.PropValue
+		var variadicArgs []spa.PropValue
+		if len(args) > 1 {
+			variadicArgs = args[1].([]spa.PropValue)
+		}
+		arg1 = variadicArgs
+		run(
+			arg0,
+			arg1...,
+		)
+	})
+	return _c
+}
+
+func (_c *MockStreamOps_SetStreamControl_Call) Return(err error) *MockStreamOps_SetStreamControl_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockStreamOps_SetStreamControl_Call) RunAndReturn(run func(streamPtr unsafe.Pointer, controls ...spa.PropValue) error) *MockStreamOps_SetStreamControl_Call {
 	_c.Call.Return(run)
 	return _c
 }
