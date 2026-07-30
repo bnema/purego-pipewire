@@ -412,6 +412,65 @@ func (_c *MockStreamOps_DisconnectStream_Call) RunAndReturn(run func(streamPtr u
 	return _c
 }
 
+// GetStreamControl provides a mock function for the type MockStreamOps
+func (_mock *MockStreamOps) GetStreamControl(streamPtr unsafe.Pointer, id spa.Prop) *spa.ControlInfo {
+	ret := _mock.Called(streamPtr, id)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetStreamControl")
+	}
+
+	var r0 *spa.ControlInfo
+	if returnFunc, ok := ret.Get(0).(func(unsafe.Pointer, spa.Prop) *spa.ControlInfo); ok {
+		r0 = returnFunc(streamPtr, id)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*spa.ControlInfo)
+		}
+	}
+	return r0
+}
+
+// MockStreamOps_GetStreamControl_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetStreamControl'
+type MockStreamOps_GetStreamControl_Call struct {
+	*mock.Call
+}
+
+// GetStreamControl is a helper method to define mock.On call
+//   - streamPtr unsafe.Pointer
+//   - id spa.Prop
+func (_e *MockStreamOps_Expecter) GetStreamControl(streamPtr any, id any) *MockStreamOps_GetStreamControl_Call {
+	return &MockStreamOps_GetStreamControl_Call{Call: _e.mock.On("GetStreamControl", streamPtr, id)}
+}
+
+func (_c *MockStreamOps_GetStreamControl_Call) Run(run func(streamPtr unsafe.Pointer, id spa.Prop)) *MockStreamOps_GetStreamControl_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 unsafe.Pointer
+		if args[0] != nil {
+			arg0 = args[0].(unsafe.Pointer)
+		}
+		var arg1 spa.Prop
+		if args[1] != nil {
+			arg1 = args[1].(spa.Prop)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockStreamOps_GetStreamControl_Call) Return(controlInfo *spa.ControlInfo) *MockStreamOps_GetStreamControl_Call {
+	_c.Call.Return(controlInfo)
+	return _c
+}
+
+func (_c *MockStreamOps_GetStreamControl_Call) RunAndReturn(run func(streamPtr unsafe.Pointer, id spa.Prop) *spa.ControlInfo) *MockStreamOps_GetStreamControl_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // QueueBuffer provides a mock function for the type MockStreamOps
 func (_mock *MockStreamOps) QueueBuffer(streamPtr unsafe.Pointer, bufPtr unsafe.Pointer) error {
 	ret := _mock.Called(streamPtr, bufPtr)

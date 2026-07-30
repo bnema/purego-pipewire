@@ -90,6 +90,59 @@ func (_c *MockPlayer_Close_Call) RunAndReturn(run func() error) *MockPlayer_Clos
 	return _c
 }
 
+// GetControl provides a mock function for the type MockPlayer
+func (_mock *MockPlayer) GetControl(id spa.Prop) *spa.ControlInfo {
+	ret := _mock.Called(id)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetControl")
+	}
+
+	var r0 *spa.ControlInfo
+	if returnFunc, ok := ret.Get(0).(func(spa.Prop) *spa.ControlInfo); ok {
+		r0 = returnFunc(id)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*spa.ControlInfo)
+		}
+	}
+	return r0
+}
+
+// MockPlayer_GetControl_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetControl'
+type MockPlayer_GetControl_Call struct {
+	*mock.Call
+}
+
+// GetControl is a helper method to define mock.On call
+//   - id spa.Prop
+func (_e *MockPlayer_Expecter) GetControl(id any) *MockPlayer_GetControl_Call {
+	return &MockPlayer_GetControl_Call{Call: _e.mock.On("GetControl", id)}
+}
+
+func (_c *MockPlayer_GetControl_Call) Run(run func(id spa.Prop)) *MockPlayer_GetControl_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 spa.Prop
+		if args[0] != nil {
+			arg0 = args[0].(spa.Prop)
+		}
+		run(
+			arg0,
+		)
+	})
+	return _c
+}
+
+func (_c *MockPlayer_GetControl_Call) Return(controlInfo *spa.ControlInfo) *MockPlayer_GetControl_Call {
+	_c.Call.Return(controlInfo)
+	return _c
+}
+
+func (_c *MockPlayer_GetControl_Call) RunAndReturn(run func(id spa.Prop) *spa.ControlInfo) *MockPlayer_GetControl_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Pause provides a mock function for the type MockPlayer
 func (_mock *MockPlayer) Pause() error {
 	ret := _mock.Called()

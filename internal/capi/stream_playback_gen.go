@@ -19,6 +19,9 @@ type pw_stream_set_activeFunc func(stream unsafe.Pointer, active bool) int32
 // pw_stream_set_controlFunc is the function type for pw_stream_set_control.
 type pw_stream_set_controlFunc func(stream unsafe.Pointer, id uint32, n_values uint32, values *float32, rest ...any) int32
 
+// pw_stream_get_controlFunc is the function type for pw_stream_get_control.
+type pw_stream_get_controlFunc func(stream unsafe.Pointer, id uint32) unsafe.Pointer
+
 // pw_stream_disconnectFunc is the function type for pw_stream_disconnect.
 type pw_stream_disconnectFunc func(stream unsafe.Pointer) int32
 
@@ -51,6 +54,8 @@ var (
 
 	pw_stream_set_control pw_stream_set_controlFunc
 
+	pw_stream_get_control pw_stream_get_controlFunc
+
 	pw_stream_disconnect pw_stream_disconnectFunc
 
 	pw_stream_dequeue_buffer pw_stream_dequeue_bufferFunc
@@ -72,6 +77,8 @@ func registerStream_playback(handle uintptr) {
 	purego.RegisterLibFunc(&pw_stream_set_active, handle, "pw_stream_set_active")
 
 	purego.RegisterLibFunc(&pw_stream_set_control, handle, "pw_stream_set_control")
+
+	purego.RegisterLibFunc(&pw_stream_get_control, handle, "pw_stream_get_control")
 
 	purego.RegisterLibFunc(&pw_stream_disconnect, handle, "pw_stream_disconnect")
 

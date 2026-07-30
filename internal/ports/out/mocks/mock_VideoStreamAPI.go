@@ -885,6 +885,63 @@ func (_c *MockVideoStreamAPI_PWStreamDisconnect_Call) RunAndReturn(run func(stre
 	return _c
 }
 
+// PWStreamGetControl provides a mock function for the type MockVideoStreamAPI
+func (_mock *MockVideoStreamAPI) PWStreamGetControl(stream unsafe.Pointer, id uint32) unsafe.Pointer {
+	ret := _mock.Called(stream, id)
+
+	if len(ret) == 0 {
+		panic("no return value specified for PWStreamGetControl")
+	}
+
+	var r0 unsafe.Pointer
+	if returnFunc, ok := ret.Get(0).(func(unsafe.Pointer, uint32) unsafe.Pointer); ok {
+		r0 = returnFunc(stream, id)
+	} else {
+		r0 = ret.Get(0).(unsafe.Pointer)
+	}
+	return r0
+}
+
+// MockVideoStreamAPI_PWStreamGetControl_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'PWStreamGetControl'
+type MockVideoStreamAPI_PWStreamGetControl_Call struct {
+	*mock.Call
+}
+
+// PWStreamGetControl is a helper method to define mock.On call
+//   - stream unsafe.Pointer
+//   - id uint32
+func (_e *MockVideoStreamAPI_Expecter) PWStreamGetControl(stream any, id any) *MockVideoStreamAPI_PWStreamGetControl_Call {
+	return &MockVideoStreamAPI_PWStreamGetControl_Call{Call: _e.mock.On("PWStreamGetControl", stream, id)}
+}
+
+func (_c *MockVideoStreamAPI_PWStreamGetControl_Call) Run(run func(stream unsafe.Pointer, id uint32)) *MockVideoStreamAPI_PWStreamGetControl_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 unsafe.Pointer
+		if args[0] != nil {
+			arg0 = args[0].(unsafe.Pointer)
+		}
+		var arg1 uint32
+		if args[1] != nil {
+			arg1 = args[1].(uint32)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockVideoStreamAPI_PWStreamGetControl_Call) Return(v unsafe.Pointer) *MockVideoStreamAPI_PWStreamGetControl_Call {
+	_c.Call.Return(v)
+	return _c
+}
+
+func (_c *MockVideoStreamAPI_PWStreamGetControl_Call) RunAndReturn(run func(stream unsafe.Pointer, id uint32) unsafe.Pointer) *MockVideoStreamAPI_PWStreamGetControl_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // PWStreamGetNodeId provides a mock function for the type MockVideoStreamAPI
 func (_mock *MockVideoStreamAPI) PWStreamGetNodeId(stream unsafe.Pointer) uint32 {
 	ret := _mock.Called(stream)
