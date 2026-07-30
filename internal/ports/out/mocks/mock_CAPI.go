@@ -840,3 +840,87 @@ func (_c *MockCAPI_PWStreamSetActive_Call) RunAndReturn(run func(stream unsafe.P
 	_c.Call.Return(run)
 	return _c
 }
+
+// PWStreamSetControl provides a mock function for the type MockCAPI
+func (_mock *MockCAPI) PWStreamSetControl(stream unsafe.Pointer, id uint32, n_values uint32, values *float32, rest ...any) int32 {
+	var tmpRet mock.Arguments
+	if len(rest) > 0 {
+		tmpRet = _mock.Called(stream, id, n_values, values, rest)
+	} else {
+		tmpRet = _mock.Called(stream, id, n_values, values)
+	}
+	ret := tmpRet
+
+	if len(ret) == 0 {
+		panic("no return value specified for PWStreamSetControl")
+	}
+
+	var r0 int32
+	if returnFunc, ok := ret.Get(0).(func(unsafe.Pointer, uint32, uint32, *float32, ...any) int32); ok {
+		r0 = returnFunc(stream, id, n_values, values, rest...)
+	} else {
+		r0 = ret.Get(0).(int32)
+	}
+	return r0
+}
+
+// MockCAPI_PWStreamSetControl_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'PWStreamSetControl'
+type MockCAPI_PWStreamSetControl_Call struct {
+	*mock.Call
+}
+
+// PWStreamSetControl is a helper method to define mock.On call
+//   - stream unsafe.Pointer
+//   - id uint32
+//   - n_values uint32
+//   - values *float32
+//   - rest ...any
+func (_e *MockCAPI_Expecter) PWStreamSetControl(stream interface{}, id interface{}, n_values interface{}, values interface{}, rest ...interface{}) *MockCAPI_PWStreamSetControl_Call {
+	return &MockCAPI_PWStreamSetControl_Call{Call: _e.mock.On("PWStreamSetControl",
+		append([]interface{}{stream, id, n_values, values}, rest...)...)}
+}
+
+func (_c *MockCAPI_PWStreamSetControl_Call) Run(run func(stream unsafe.Pointer, id uint32, n_values uint32, values *float32, rest ...any)) *MockCAPI_PWStreamSetControl_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 unsafe.Pointer
+		if args[0] != nil {
+			arg0 = args[0].(unsafe.Pointer)
+		}
+		var arg1 uint32
+		if args[1] != nil {
+			arg1 = args[1].(uint32)
+		}
+		var arg2 uint32
+		if args[2] != nil {
+			arg2 = args[2].(uint32)
+		}
+		var arg3 *float32
+		if args[3] != nil {
+			arg3 = args[3].(*float32)
+		}
+		var arg4 []any
+		var variadicArgs []any
+		if len(args) > 4 {
+			variadicArgs = args[4].([]any)
+		}
+		arg4 = variadicArgs
+		run(
+			arg0,
+			arg1,
+			arg2,
+			arg3,
+			arg4...,
+		)
+	})
+	return _c
+}
+
+func (_c *MockCAPI_PWStreamSetControl_Call) Return(n int32) *MockCAPI_PWStreamSetControl_Call {
+	_c.Call.Return(n)
+	return _c
+}
+
+func (_c *MockCAPI_PWStreamSetControl_Call) RunAndReturn(run func(stream unsafe.Pointer, id uint32, n_values uint32, values *float32, rest ...any) int32) *MockCAPI_PWStreamSetControl_Call {
+	_c.Call.Return(run)
+	return _c
+}

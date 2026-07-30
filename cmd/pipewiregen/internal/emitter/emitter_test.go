@@ -404,6 +404,11 @@ func TestExtractParamNames(t *testing.T) {
 			input:  "()",
 			expect: "()",
 		},
+		{
+			name:   "trailing variadic parameter is spread",
+			input:  "(stream unsafe.Pointer, id uint32, rest ...any)",
+			expect: "(stream, id, rest...)",
+		},
 	}
 
 	for _, tt := range tests {

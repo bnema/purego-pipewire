@@ -6,7 +6,7 @@
   "groups": [
     {"name": "init", "interface": "InitAPI", "package": "out", "symbols": ["pw_init", "pw_deinit"]},
     {"name": "loop", "interface": "LoopAPI", "package": "out", "symbols": ["pw_main_loop_new", "pw_main_loop_destroy", "pw_main_loop_run", "pw_main_loop_quit", "pw_main_loop_get_loop"]},
-    {"name": "stream_playback", "interface": "StreamPlaybackAPI", "package": "out", "symbols": ["pw_stream_new_simple", "pw_stream_connect", "pw_stream_set_active", "pw_stream_disconnect", "pw_stream_dequeue_buffer", "pw_stream_queue_buffer", "pw_stream_add_listener", "pw_stream_destroy"]}
+    {"name": "stream_playback", "interface": "StreamPlaybackAPI", "package": "out", "symbols": ["pw_stream_new_simple", "pw_stream_connect", "pw_stream_set_active", "pw_stream_set_control", "pw_stream_disconnect", "pw_stream_dequeue_buffer", "pw_stream_queue_buffer", "pw_stream_add_listener", "pw_stream_destroy"]}
   ],
   "symbols": [
     {"name": "pw_init", "library": "pipewire", "group": "init", "signature": "func(argc *int32, argv ***byte)"},
@@ -19,6 +19,7 @@
     {"name": "pw_stream_new_simple", "library": "pipewire", "group": "stream_playback", "signature": "func(context unsafe.Pointer, name *byte, props unsafe.Pointer, events unsafe.Pointer, data unsafe.Pointer) unsafe.Pointer"},
     {"name": "pw_stream_connect", "library": "pipewire", "group": "stream_playback", "signature": "func(stream unsafe.Pointer, direction int32, id uint32, flags uint32, ports unsafe.Pointer, n_ports uint32) int32"},
     {"name": "pw_stream_set_active", "library": "pipewire", "group": "stream_playback", "signature": "func(stream unsafe.Pointer, active bool) int32"},
+    {"name": "pw_stream_set_control", "library": "pipewire", "group": "stream_playback", "signature": "func(stream unsafe.Pointer, id uint32, n_values uint32, values *float32, rest ...any) int32"},
     {"name": "pw_stream_disconnect", "library": "pipewire", "group": "stream_playback", "signature": "func(stream unsafe.Pointer) int32"},
     {"name": "pw_stream_dequeue_buffer", "library": "pipewire", "group": "stream_playback", "signature": "func(stream unsafe.Pointer) unsafe.Pointer"},
     {"name": "pw_stream_queue_buffer", "library": "pipewire", "group": "stream_playback", "signature": "func(stream unsafe.Pointer, buffer unsafe.Pointer) int32"},
