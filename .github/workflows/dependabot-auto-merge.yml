@@ -1,0 +1,11 @@
+name: Dependabot Auto-Merge
+
+on: pull_request
+
+jobs:
+  auto-merge:
+    if: github.event.pull_request.user.login == 'dependabot[bot]'
+    permissions:
+      contents: write
+      pull-requests: write
+    uses: bnema/gh-actions/.github/workflows/dependabot-auto-merge.yml@main
