@@ -6,6 +6,7 @@ import (
 	"unsafe"
 
 	portout "github.com/bnema/purego-pipewire/internal/ports/out"
+	"github.com/bnema/purego-pipewire/spa"
 )
 
 // callbackOps is intentionally allocation-free so callback allocation tests
@@ -25,6 +26,12 @@ func (o *callbackOps) ConnectPlaybackStream(unsafe.Pointer, portout.PlaybackForm
 }
 func (o *callbackOps) SetStreamActive(unsafe.Pointer, bool) error {
 	return errors.New("not implemented")
+}
+func (o *callbackOps) SetStreamControl(unsafe.Pointer, ...spa.PropValue) error {
+	return errors.New("not implemented")
+}
+func (o *callbackOps) GetStreamControl(unsafe.Pointer, spa.Prop) *spa.ControlInfo {
+	return nil
 }
 func (o *callbackOps) DequeueBuffer(unsafe.Pointer) unsafe.Pointer {
 	if o.dequeueAt >= len(o.buffers) {

@@ -10,6 +10,7 @@ import (
 	"github.com/bnema/purego"
 
 	portout "github.com/bnema/purego-pipewire/internal/ports/out"
+	"github.com/bnema/purego-pipewire/spa"
 )
 
 // PWError represents a PipeWire C API error with the function name and return code.
@@ -157,6 +158,84 @@ func (s *streamOpsImpl) SetStreamActive(streamPtr unsafe.Pointer, active bool) e
 		return &PWError{Func: "pw_stream_set_active", Code: ret}
 	}
 	return nil
+}
+
+func (s *streamOpsImpl) SetStreamControl(streamPtr unsafe.Pointer, controls ...spa.PropValue) error {
+	if len(controls) == 0 {
+		return fmt.Errorf("pw_stream_set_control: at least one control is required")
+	}
+	for _, c := range controls {
+		if len(c.Values) == 0 {
+			return fmt.Errorf("pw_stream_set_control: values must not be empty")
+		}
+	}
+
+	first := controls[0]
+	args := make([]any, 0, 3*(len(controls)-1)+1)
+	for _, c := range controls[1:] {
+		args = append(args, uint32(c.ID), uint32(len(c.Values)), &c.Values[0])
+	}
+	args = append(args, uint32(0)) // Sentinel, +1
+
+	ret := s.callStreamWithLoopLock(streamPtr, func() int32 {
+		return pw_stream_set_control(streamPtr, uint32(first.ID), uint32(len(first.Values)), &first.Values[0], args...)
+	})
+	if ret < 0 {
+		return &PWError{Func: "pw_stream_set_control", Code: ret}
+	}
+	return nil
+}
+
+// pwStreamControl mirrors struct pw_stream_control from <pipewire/stream.h>.
+type pwStreamControl struct {
+	name      *byte
+	flags     uint32
+	def       float32
+	min       float32
+	max       float32
+	values    *float32
+	nValues   uint32
+	maxValues uint32
+}
+
+// GetStreamControl reads a control's current value. Returns nil if the
+// stream doesn't expose a control with that id, mirroring pw_stream_get_control
+// itself returning NULL.
+func (s *streamOpsImpl) GetStreamControl(streamPtr unsafe.Pointer, id spa.Prop) *spa.ControlInfo {
+	ptr := pw_stream_get_control(streamPtr, uint32(id))
+	if ptr == nil {
+		return nil
+	}
+
+	c := (*pwStreamControl)(ptr)
+	info := &spa.ControlInfo{
+		Name: GoString(uintptr(unsafe.Pointer(c.name))),
+		Def:  c.def,
+		Min:  c.min,
+		Max:  c.max,
+	}
+	if c.nValues > 0 && c.values != nil {
+		info.Values = append([]float32(nil), unsafe.Slice(c.values, int(c.nValues))...)
+	}
+	return info
+}
+
+// GoString copies a char* to a Go string.
+// This function was copied from purego
+func GoString(c uintptr) string {
+	// We take the address and then dereference it to trick go vet from creating a possible misuse of unsafe.Pointer
+	ptr := *(*unsafe.Pointer)(unsafe.Pointer(&c))
+	if ptr == nil {
+		return ""
+	}
+	var length int
+	for {
+		if *(*byte)(unsafe.Add(ptr, uintptr(length))) == '\x00' {
+			break
+		}
+		length++
+	}
+	return string(unsafe.Slice((*byte)(ptr), length))
 }
 
 func (s *streamOpsImpl) DequeueBuffer(streamPtr unsafe.Pointer) unsafe.Pointer {

@@ -246,7 +246,10 @@ func parseSignature(sig string) (params, results string) {
 // and returns a call-site argument list like "(argc, argv)".
 // It strips all type information, keeping only the parameter names.
 // It uses depth-aware comma splitting to correctly handle nested function-type
-// parameters like "callback func(int, int)".
+// parameters like "callback func(int, int)". A trailing variadic parameter
+// like "rest ...any" keeps its "..." in the output ("rest...") so the
+// generated call spreads it instead of passing the slice as a single
+// argument.
 func extractParamNames(params string) string {
 	inner := strings.Trim(params, "()")
 	if inner == "" {
@@ -272,12 +275,15 @@ func extractParamNames(params string) string {
 	names := make([]string, 0, len(segments))
 	for _, seg := range segments {
 		// Each segment is "name type" — the first space at depth 0 separates name from type.
-		idx := strings.IndexByte(seg, ' ')
-		if idx < 0 {
+		name, typ, ok := strings.Cut(seg, " ")
+		if !ok {
 			names = append(names, seg)
-		} else {
-			names = append(names, seg[:idx])
+			continue
 		}
+		if strings.HasPrefix(strings.TrimSpace(typ), "...") {
+			name += "..."
+		}
+		names = append(names, name)
 	}
 	return "(" + strings.Join(names, ", ") + ")"
 }

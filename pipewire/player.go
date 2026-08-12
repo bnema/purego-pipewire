@@ -4,6 +4,7 @@ import (
 	"errors"
 
 	"github.com/bnema/purego-pipewire/internal/core"
+	"github.com/bnema/purego-pipewire/spa"
 )
 
 // SampleFormat represents the audio sample format type.
@@ -91,6 +92,8 @@ type Player interface {
 	Stop() error
 	Close() error
 	State() PlayerState
+	SetControl(values ...spa.PropValue) error
+	GetControl(id spa.Prop) *spa.ControlInfo
 }
 
 // ErrInvalidPlayerConfig is returned when the player configuration is invalid.
@@ -137,6 +140,20 @@ func (p *playerImpl) State() PlayerState {
 		return PlayerStateIdle
 	}
 	return PlayerState(p.internal.State())
+}
+
+func (p *playerImpl) SetControl(values ...spa.PropValue) error {
+	if p.internal == nil {
+		return errors.New("player not initialized")
+	}
+	return p.internal.SetControl(values...)
+}
+
+func (p *playerImpl) GetControl(id spa.Prop) *spa.ControlInfo {
+	if p.internal == nil {
+		return nil
+	}
+	return p.internal.GetControl(id)
 }
 
 // NewPlayer creates a new audio player with the given configuration and callbacks.

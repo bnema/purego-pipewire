@@ -9,6 +9,8 @@ type StreamPlaybackAPI interface {
 	PWStreamNewSimple(context unsafe.Pointer, name *byte, props unsafe.Pointer, events unsafe.Pointer, data unsafe.Pointer) unsafe.Pointer
 	PWStreamConnect(stream unsafe.Pointer, direction int32, id uint32, flags uint32, ports unsafe.Pointer, n_ports uint32) int32
 	PWStreamSetActive(stream unsafe.Pointer, active bool) int32
+	PWStreamSetControl(stream unsafe.Pointer, id uint32, n_values uint32, values *float32, rest ...any) int32
+	PWStreamGetControl(stream unsafe.Pointer, id uint32) unsafe.Pointer
 	PWStreamDisconnect(stream unsafe.Pointer) int32
 	PWStreamDequeueBuffer(stream unsafe.Pointer) unsafe.Pointer
 	PWStreamQueueBuffer(stream unsafe.Pointer, buffer unsafe.Pointer) int32

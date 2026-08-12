@@ -9,6 +9,7 @@ import (
 
 	"github.com/bnema/purego-pipewire/internal/capi"
 	portout "github.com/bnema/purego-pipewire/internal/ports/out"
+	"github.com/bnema/purego-pipewire/spa"
 )
 
 var (
@@ -343,6 +344,40 @@ func (p *player) deactivateStream() error {
 	return streamOps.SetStreamActive(streamPtr, false)
 }
 
+// SetControl sets one or more SPA control values on the stream.
+// No-op when no values are given or the stream is nil.
+func (p *player) SetControl(values ...spa.PropValue) error {
+	if len(values) == 0 {
+		return nil
+	}
+
+	p.mu.Lock()
+	streamOps := p.streamOps
+	streamPtr := atomic.LoadPointer((*unsafe.Pointer)(unsafe.Pointer(&p.streamPtr)))
+	p.mu.Unlock()
+
+	if streamOps == nil || streamPtr == nil {
+		return nil
+	}
+
+	return streamOps.SetStreamControl(streamPtr, values...)
+}
+
+// GetControl reads a control's current value. Returns nil if there's no
+// active stream or the stream doesn't expose a control with that id.
+func (p *player) GetControl(id spa.Prop) *spa.ControlInfo {
+	p.mu.Lock()
+	streamOps := p.streamOps
+	streamPtr := atomic.LoadPointer((*unsafe.Pointer)(unsafe.Pointer(&p.streamPtr)))
+	p.mu.Unlock()
+
+	if streamOps == nil || streamPtr == nil {
+		return nil
+	}
+
+	return streamOps.GetStreamControl(streamPtr, id)
+}
+
 // teardown releases player-owned stream and main-loop resources through
 // StreamOps. Safe to call when fields are nil or on repeated invocation.
 // When a main loop exists, DisconnectStream is issued first while the loop is
@@ -437,4 +472,23 @@ func (p *Player) Close() error {
 		return nil
 	}
 	return p.p.Close()
+}
+
+// SetControl sets one or more raw SPA control values on the stream in a
+// single call. Build each value with spa.FloatProp.Value,
+// spa.BoolProp.Value, or spa.FloatArrayProp.Value.
+func (p *Player) SetControl(values ...spa.PropValue) error {
+	if p.p == nil {
+		return ErrPlayerClosed
+	}
+	return p.p.SetControl(values...)
+}
+
+// GetControl reads a control's current value. Returns nil if there's no
+// active stream or the stream doesn't expose a control with that id.
+func (p *Player) GetControl(id spa.Prop) *spa.ControlInfo {
+	if p.p == nil {
+		return nil
+	}
+	return p.p.GetControl(id)
 }
