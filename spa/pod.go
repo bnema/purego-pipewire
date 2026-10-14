@@ -3,6 +3,7 @@ package spa
 import (
 	"encoding/binary"
 	"errors"
+	"math"
 )
 
 // Errors returned by the pod builder.
@@ -149,7 +150,8 @@ func (b *PodBuilder) Fraction(num, denom uint32) { b.scalar(TypeFraction, 8, num
 
 // choiceBegin writes the choice header; it returns the header offset.
 func (b *PodBuilder) choiceBegin(choiceType, childSize, childType uint32, nvals int) (int, bool) {
-	if !b.room(24 + nvals*int(childSize) + 8) {
+	// Room for the header, the values and the padding choiceEnd adds.
+	if !b.room((b.n+24+nvals*int(childSize)+7)&^7 - b.n) {
 		return 0, false
 	}
 	start := b.n
@@ -271,7 +273,8 @@ func (b *PodBuilder) podEnumFormats(formats []VideoFormat) {
 // given stride, a buffer count range (minBuf..maxBuf, defBuf by default) and
 // the allowed SPA data types as a bit mask (for example 1<<DataMemFd).
 func VideoBuffers(dst []byte, size, stride, minBuf, defBuf, maxBuf int, dataTypes uint32) ([]byte, error) {
-	if size <= 0 || stride <= 0 || minBuf <= 0 || defBuf < minBuf || maxBuf < defBuf {
+	if size <= 0 || stride <= 0 || minBuf <= 0 || defBuf < minBuf || maxBuf < defBuf ||
+		size > math.MaxInt32 || stride > math.MaxInt32 || maxBuf > math.MaxInt32 {
 		return nil, ErrPodState
 	}
 	b := NewPodBuilder(dst)

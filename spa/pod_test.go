@@ -3,6 +3,7 @@ package spa
 import (
 	"encoding/binary"
 	"encoding/hex"
+	"errors"
 	"testing"
 )
 
@@ -55,6 +56,39 @@ func TestVideoBuffersGolden(t *testing.T) {
 	}
 	if want := mustHex(t, goldenBuffers); hex.EncodeToString(got) != hex.EncodeToString(want) {
 		t.Fatalf("got  %x\nwant %x", got, want)
+	}
+}
+
+// TestBuildersExactFit checks each builder accepts a destination exactly as
+// long as its pod and rejects one byte less.
+func TestBuildersExactFit(t *testing.T) {
+	builds := map[string]func(dst []byte) ([]byte, error){
+		"enum single": func(dst []byte) ([]byte, error) { return VideoEnumFormat(dst, 320, 240, 60, VideoFormatBGRx) },
+		"enum multi": func(dst []byte) ([]byte, error) {
+			return VideoEnumFormat(dst, 1920, 1080, 144, VideoFormatBGRx, VideoFormatBGRA)
+		},
+		"buffers": func(dst []byte) ([]byte, error) { return VideoBuffers(dst, 320*240*4, 320*4, 2, 8, 16, 1<<DataMemFd) },
+		"meta":    MetaHeader,
+	}
+	for name, build := range builds {
+		var big [512]byte
+		pod, err := build(big[:])
+		if err != nil {
+			t.Fatalf("%s: %v", name, err)
+		}
+		if _, err := build(make([]byte, len(pod))); err != nil {
+			t.Errorf("%s: exact %d-byte destination: %v", name, len(pod), err)
+		}
+		if _, err := build(make([]byte, len(pod)-1)); !errors.Is(err, ErrPodFull) {
+			t.Errorf("%s: short destination: %v, want ErrPodFull", name, err)
+		}
+	}
+}
+
+func TestVideoBuffersRejectsInt32Overflow(t *testing.T) {
+	var dst [512]byte
+	if _, err := VideoBuffers(dst[:], 1<<31, 1<<17, 2, 8, 16, 1<<DataMemFd); !errors.Is(err, ErrPodState) {
+		t.Fatalf("size 1<<31: %v, want ErrPodState", err)
 	}
 }
 
