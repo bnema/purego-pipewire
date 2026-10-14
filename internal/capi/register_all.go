@@ -10,5 +10,5 @@ func registerAll(h loader.Handles) error {
 	registerLoopLock(h.PipeWire)
 	registerStream_playback(h.PipeWire)
 	registerVideo(h.PipeWire)
-	return nil
+	return registerVideoFast(h.PipeWire)
 }
