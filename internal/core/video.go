@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"math"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -213,7 +214,7 @@ func (c *Core) NewVideoSource(cfg VideoConfig, h portin.VideoHandler) (*VideoSou
 	if c.ptr == nil || c.capi == nil {
 		return nil, ErrVideoStreamCreate
 	}
-	if h == nil || cfg.Width <= 0 || cfg.Height <= 0 || cfg.Width > 1<<15 || cfg.Height > 1<<15 {
+	if h == nil || !validVideoSize(cfg.Width, cfg.Height) {
 		return nil, ErrVideoConfig
 	}
 	if cfg.MaxFPS <= 0 {
@@ -387,6 +388,12 @@ func (s *VideoSource) Trigger() {
 	}
 }
 
+// validVideoSize reports whether a w×h frame of 4-byte pixels fits the
+// int32 sizes SPA buffers carry.
+func validVideoSize(w, h int) bool {
+	return w > 0 && h > 0 && w <= 1<<15 && h <= 1<<15 && w*4*h <= math.MaxInt32
+}
+
 // Resize renegotiates the stream with a new size. Buffers PipeWire replaces
 // stay valid while borrowed; hand them back with Queue or Release (ideally
 // resize when none is borrowed).
@@ -394,7 +401,7 @@ func (s *VideoSource) Resize(w, h int) error {
 	if s.stream == nil {
 		return ErrVideoResize
 	}
-	if w <= 0 || h <= 0 || w > 1<<15 || h > 1<<15 {
+	if !validVideoSize(w, h) {
 		return ErrVideoConfig
 	}
 	if _, err := spa.VideoEnumFormat(s.enumPod[:], w, h, s.cfg.MaxFPS, s.formats[:s.nformats]...); err != nil {

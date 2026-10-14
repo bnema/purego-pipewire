@@ -447,6 +447,9 @@ func TestNewVideoSourceErrors(t *testing.T) {
 	if _, err := core.NewVideoSource(VideoConfig{Width: 0, Height: 10}, h); !errors.Is(err, ErrVideoConfig) {
 		t.Errorf("zero width: %v", err)
 	}
+	if _, err := core.NewVideoSource(VideoConfig{Width: 1 << 15, Height: 1 << 14}, h); !errors.Is(err, ErrVideoConfig) {
+		t.Errorf("frame size over int32: %v", err)
+	}
 	if _, err := core.NewVideoSource(VideoConfig{Width: 10, Height: 10}, nil); !errors.Is(err, ErrVideoConfig) {
 		t.Errorf("nil handler: %v", err)
 	}
