@@ -16,10 +16,19 @@ func NewMockCAPI(t interface {
 	mock.TestingT
 	Cleanup(func())
 }) *MockCAPI {
+	if helper, ok := t.(interface{ Helper() }); ok {
+		helper.Helper()
+	}
+
 	mock := &MockCAPI{}
 	mock.Mock.Test(t)
 
-	t.Cleanup(func() { mock.AssertExpectations(t) })
+	t.Cleanup(func() {
+		if helper, ok := t.(interface{ Helper() }); ok {
+			helper.Helper()
+		}
+		mock.AssertExpectations(t)
+	})
 
 	return mock
 }
@@ -84,7 +93,7 @@ type MockCAPI_PWInit_Call struct {
 // PWInit is a helper method to define mock.On call
 //   - argc *int32
 //   - argv ***byte
-func (_e *MockCAPI_Expecter) PWInit(argc interface{}, argv interface{}) *MockCAPI_PWInit_Call {
+func (_e *MockCAPI_Expecter) PWInit(argc any, argv any) *MockCAPI_PWInit_Call {
 	return &MockCAPI_PWInit_Call{Call: _e.mock.On("PWInit", argc, argv)}
 }
 
@@ -129,7 +138,7 @@ type MockCAPI_PWMainLoopDestroy_Call struct {
 
 // PWMainLoopDestroy is a helper method to define mock.On call
 //   - loop unsafe.Pointer
-func (_e *MockCAPI_Expecter) PWMainLoopDestroy(loop interface{}) *MockCAPI_PWMainLoopDestroy_Call {
+func (_e *MockCAPI_Expecter) PWMainLoopDestroy(loop any) *MockCAPI_PWMainLoopDestroy_Call {
 	return &MockCAPI_PWMainLoopDestroy_Call{Call: _e.mock.On("PWMainLoopDestroy", loop)}
 }
 
@@ -180,7 +189,7 @@ type MockCAPI_PWMainLoopGetLoop_Call struct {
 
 // PWMainLoopGetLoop is a helper method to define mock.On call
 //   - loop unsafe.Pointer
-func (_e *MockCAPI_Expecter) PWMainLoopGetLoop(loop interface{}) *MockCAPI_PWMainLoopGetLoop_Call {
+func (_e *MockCAPI_Expecter) PWMainLoopGetLoop(loop any) *MockCAPI_PWMainLoopGetLoop_Call {
 	return &MockCAPI_PWMainLoopGetLoop_Call{Call: _e.mock.On("PWMainLoopGetLoop", loop)}
 }
 
@@ -231,7 +240,7 @@ type MockCAPI_PWMainLoopNew_Call struct {
 
 // PWMainLoopNew is a helper method to define mock.On call
 //   - props unsafe.Pointer
-func (_e *MockCAPI_Expecter) PWMainLoopNew(props interface{}) *MockCAPI_PWMainLoopNew_Call {
+func (_e *MockCAPI_Expecter) PWMainLoopNew(props any) *MockCAPI_PWMainLoopNew_Call {
 	return &MockCAPI_PWMainLoopNew_Call{Call: _e.mock.On("PWMainLoopNew", props)}
 }
 
@@ -282,7 +291,7 @@ type MockCAPI_PWMainLoopQuit_Call struct {
 
 // PWMainLoopQuit is a helper method to define mock.On call
 //   - loop unsafe.Pointer
-func (_e *MockCAPI_Expecter) PWMainLoopQuit(loop interface{}) *MockCAPI_PWMainLoopQuit_Call {
+func (_e *MockCAPI_Expecter) PWMainLoopQuit(loop any) *MockCAPI_PWMainLoopQuit_Call {
 	return &MockCAPI_PWMainLoopQuit_Call{Call: _e.mock.On("PWMainLoopQuit", loop)}
 }
 
@@ -333,7 +342,7 @@ type MockCAPI_PWMainLoopRun_Call struct {
 
 // PWMainLoopRun is a helper method to define mock.On call
 //   - loop unsafe.Pointer
-func (_e *MockCAPI_Expecter) PWMainLoopRun(loop interface{}) *MockCAPI_PWMainLoopRun_Call {
+func (_e *MockCAPI_Expecter) PWMainLoopRun(loop any) *MockCAPI_PWMainLoopRun_Call {
 	return &MockCAPI_PWMainLoopRun_Call{Call: _e.mock.On("PWMainLoopRun", loop)}
 }
 
@@ -387,7 +396,7 @@ type MockCAPI_PWStreamAddListener_Call struct {
 //   - listener unsafe.Pointer
 //   - events unsafe.Pointer
 //   - data unsafe.Pointer
-func (_e *MockCAPI_Expecter) PWStreamAddListener(stream interface{}, listener interface{}, events interface{}, data interface{}) *MockCAPI_PWStreamAddListener_Call {
+func (_e *MockCAPI_Expecter) PWStreamAddListener(stream any, listener any, events any, data any) *MockCAPI_PWStreamAddListener_Call {
 	return &MockCAPI_PWStreamAddListener_Call{Call: _e.mock.On("PWStreamAddListener", stream, listener, events, data)}
 }
 
@@ -458,7 +467,7 @@ type MockCAPI_PWStreamConnect_Call struct {
 //   - flags uint32
 //   - ports unsafe.Pointer
 //   - n_ports uint32
-func (_e *MockCAPI_Expecter) PWStreamConnect(stream interface{}, direction interface{}, id interface{}, flags interface{}, ports interface{}, n_ports interface{}) *MockCAPI_PWStreamConnect_Call {
+func (_e *MockCAPI_Expecter) PWStreamConnect(stream any, direction any, id any, flags any, ports any, n_ports any) *MockCAPI_PWStreamConnect_Call {
 	return &MockCAPI_PWStreamConnect_Call{Call: _e.mock.On("PWStreamConnect", stream, direction, id, flags, ports, n_ports)}
 }
 
@@ -534,7 +543,7 @@ type MockCAPI_PWStreamDequeueBuffer_Call struct {
 
 // PWStreamDequeueBuffer is a helper method to define mock.On call
 //   - stream unsafe.Pointer
-func (_e *MockCAPI_Expecter) PWStreamDequeueBuffer(stream interface{}) *MockCAPI_PWStreamDequeueBuffer_Call {
+func (_e *MockCAPI_Expecter) PWStreamDequeueBuffer(stream any) *MockCAPI_PWStreamDequeueBuffer_Call {
 	return &MockCAPI_PWStreamDequeueBuffer_Call{Call: _e.mock.On("PWStreamDequeueBuffer", stream)}
 }
 
@@ -574,7 +583,7 @@ type MockCAPI_PWStreamDestroy_Call struct {
 
 // PWStreamDestroy is a helper method to define mock.On call
 //   - stream unsafe.Pointer
-func (_e *MockCAPI_Expecter) PWStreamDestroy(stream interface{}) *MockCAPI_PWStreamDestroy_Call {
+func (_e *MockCAPI_Expecter) PWStreamDestroy(stream any) *MockCAPI_PWStreamDestroy_Call {
 	return &MockCAPI_PWStreamDestroy_Call{Call: _e.mock.On("PWStreamDestroy", stream)}
 }
 
@@ -625,7 +634,7 @@ type MockCAPI_PWStreamDisconnect_Call struct {
 
 // PWStreamDisconnect is a helper method to define mock.On call
 //   - stream unsafe.Pointer
-func (_e *MockCAPI_Expecter) PWStreamDisconnect(stream interface{}) *MockCAPI_PWStreamDisconnect_Call {
+func (_e *MockCAPI_Expecter) PWStreamDisconnect(stream any) *MockCAPI_PWStreamDisconnect_Call {
 	return &MockCAPI_PWStreamDisconnect_Call{Call: _e.mock.On("PWStreamDisconnect", stream)}
 }
 
@@ -680,7 +689,7 @@ type MockCAPI_PWStreamNewSimple_Call struct {
 //   - props unsafe.Pointer
 //   - events unsafe.Pointer
 //   - data unsafe.Pointer
-func (_e *MockCAPI_Expecter) PWStreamNewSimple(context interface{}, name interface{}, props interface{}, events interface{}, data interface{}) *MockCAPI_PWStreamNewSimple_Call {
+func (_e *MockCAPI_Expecter) PWStreamNewSimple(context any, name any, props any, events any, data any) *MockCAPI_PWStreamNewSimple_Call {
 	return &MockCAPI_PWStreamNewSimple_Call{Call: _e.mock.On("PWStreamNewSimple", context, name, props, events, data)}
 }
 
@@ -752,7 +761,7 @@ type MockCAPI_PWStreamQueueBuffer_Call struct {
 // PWStreamQueueBuffer is a helper method to define mock.On call
 //   - stream unsafe.Pointer
 //   - buffer unsafe.Pointer
-func (_e *MockCAPI_Expecter) PWStreamQueueBuffer(stream interface{}, buffer interface{}) *MockCAPI_PWStreamQueueBuffer_Call {
+func (_e *MockCAPI_Expecter) PWStreamQueueBuffer(stream any, buffer any) *MockCAPI_PWStreamQueueBuffer_Call {
 	return &MockCAPI_PWStreamQueueBuffer_Call{Call: _e.mock.On("PWStreamQueueBuffer", stream, buffer)}
 }
 
@@ -809,7 +818,7 @@ type MockCAPI_PWStreamSetActive_Call struct {
 // PWStreamSetActive is a helper method to define mock.On call
 //   - stream unsafe.Pointer
 //   - active bool
-func (_e *MockCAPI_Expecter) PWStreamSetActive(stream interface{}, active interface{}) *MockCAPI_PWStreamSetActive_Call {
+func (_e *MockCAPI_Expecter) PWStreamSetActive(stream any, active any) *MockCAPI_PWStreamSetActive_Call {
 	return &MockCAPI_PWStreamSetActive_Call{Call: _e.mock.On("PWStreamSetActive", stream, active)}
 }
 

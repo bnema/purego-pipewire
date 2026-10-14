@@ -14,10 +14,19 @@ func NewMockInitAPI(t interface {
 	mock.TestingT
 	Cleanup(func())
 }) *MockInitAPI {
+	if helper, ok := t.(interface{ Helper() }); ok {
+		helper.Helper()
+	}
+
 	mock := &MockInitAPI{}
 	mock.Mock.Test(t)
 
-	t.Cleanup(func() { mock.AssertExpectations(t) })
+	t.Cleanup(func() {
+		if helper, ok := t.(interface{ Helper() }); ok {
+			helper.Helper()
+		}
+		mock.AssertExpectations(t)
+	})
 
 	return mock
 }
@@ -82,7 +91,7 @@ type MockInitAPI_PWInit_Call struct {
 // PWInit is a helper method to define mock.On call
 //   - argc *int32
 //   - argv ***byte
-func (_e *MockInitAPI_Expecter) PWInit(argc interface{}, argv interface{}) *MockInitAPI_PWInit_Call {
+func (_e *MockInitAPI_Expecter) PWInit(argc any, argv any) *MockInitAPI_PWInit_Call {
 	return &MockInitAPI_PWInit_Call{Call: _e.mock.On("PWInit", argc, argv)}
 }
 
