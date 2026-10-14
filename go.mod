@@ -1,9 +1,9 @@
 module github.com/bnema/purego-pipewire
 
-go 1.26
+go 1.27
 
 require (
-	github.com/bnema/purego v0.11.0-bnema.3
+	github.com/bnema/purego v0.13.0-bnema.1
 	github.com/stretchr/testify v1.11.1
 )
 
