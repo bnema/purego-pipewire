@@ -307,6 +307,11 @@ func MetaHeader(dst []byte) ([]byte, error) {
 // ParseVideoFormat extracts the video format and size from a Format param
 // (an Object pod). It does not allocate. ok is false for malformed,
 // truncated or non-raw-video pods.
+//
+// PipeWire wraps every value of a negotiated Format in a Choice of type None
+// holding a single value; plain values are accepted as well. Choices that
+// still offer alternatives (Enum, Range, ...) are not a fixed format and are
+// rejected.
 func ParseVideoFormat(pod []byte) (format uint32, w, h int, ok bool) {
 	if len(pod) < 16 {
 		return 0, 0, 0, false
@@ -330,6 +335,25 @@ func ParseVideoFormat(pod []byte) (format uint32, w, h int, ok bool) {
 		if vsize < 0 || body+vsize > end {
 			return 0, 0, 0, false
 		}
+		next := (body + vsize + 7) &^ 7
+		if next <= off {
+			return 0, 0, 0, false
+		}
+		if vtype == TypeChoice {
+			// Choice body: type, flags, then the child pod header (size, type)
+			// and the values.
+			if vsize < 16 || le.Uint32(pod[body:]) != ChoiceNone {
+				return 0, 0, 0, false
+			}
+			childSize := int(le.Uint32(pod[body+8:]))
+			vtype = le.Uint32(pod[body+12:])
+			body += 16
+			vsize -= 16
+			if childSize < 0 || childSize > vsize {
+				return 0, 0, 0, false
+			}
+			vsize = childSize
+		}
 		switch {
 		case key == FormatKeyMediaType && vtype == TypeId && vsize >= 4:
 			isVideo = le.Uint32(pod[body:]) == MediaTypeVideo
@@ -345,11 +369,6 @@ func ParseVideoFormat(pod []byte) (format uint32, w, h int, ok bool) {
 			}
 			w, h = int(uw), int(uh)
 			haveSize = true
-		}
-		next := body + vsize
-		next = (next + 7) &^ 7
-		if next <= off {
-			return 0, 0, 0, false
 		}
 		off = next
 	}

@@ -92,6 +92,25 @@ func formatPod(t testing.TB, dst []byte, format VideoFormat, w, h uint32) []byte
 	return pod
 }
 
+// goldenNegotiatedFormat is a Format param exactly as PipeWire 1.6.9 delivers
+// it to param_changed for a 320x240 BGRx stream (captured from a live stream):
+// every value is a Choice of type None around one value.
+const goldenNegotiatedFormat = "f80000000f0000000300040004000000010000000000000014000000130000000000000000000000040000000300000002000000000000000200000000000000140000001300000000000000000000000400000003000000010000000000000001000200000000001400000013000000000000000000000004000000030000000800000000000000030002000000000018000000130000000000000000000000080000000a00000040010000f00000000400020000000000080000000b0000000000000001000000050002000000000028000000130000000000000000000000080000000b0000003c0000000100000001000000010000003c00000001000000"
+
+func TestParseVideoFormatChoiceNone(t *testing.T) {
+	f, w, h, ok := ParseVideoFormat(mustHex(t, goldenNegotiatedFormat))
+	if !ok || VideoFormat(f) != VideoFormatBGRx || w != 320 || h != 240 {
+		t.Fatalf("parse = %d %d %d %v", f, w, h, ok)
+	}
+	// Every truncation of the real pod is rejected without panicking.
+	pod := mustHex(t, goldenNegotiatedFormat)
+	for n := 0; n < len(pod); n++ {
+		if _, _, _, ok := ParseVideoFormat(pod[:n]); ok {
+			t.Fatalf("truncated to %d bytes accepted", n)
+		}
+	}
+}
+
 func TestParseVideoFormatRoundTrip(t *testing.T) {
 	var dst [256]byte
 	for _, tc := range []struct {
@@ -206,12 +225,14 @@ func TestPodBuilderErrors(t *testing.T) {
 func TestPodAllocations(t *testing.T) {
 	var dst [512]byte
 	pod := append([]byte(nil), formatPod(t, dst[:], VideoFormatBGRx, 320, 240)...)
+	real := mustHex(t, goldenNegotiatedFormat)
 	allocs := testing.AllocsPerRun(200, func() {
 		e, _ := VideoEnumFormat(dst[:], 320, 240, 60, VideoFormatBGRx, VideoFormatBGRA)
 		_, _ = VideoBuffers(dst[:], 307200, 1280, 2, 8, 16, 1<<DataMemFd)
 		_, _ = MetaHeader(dst[:])
 		_ = e
 		_, _, _, _ = ParseVideoFormat(pod)
+		_, _, _, _ = ParseVideoFormat(real)
 	})
 	if allocs != 0 {
 		t.Fatalf("allocs = %v, want 0", allocs)
