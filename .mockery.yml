@@ -16,6 +16,8 @@ packages:
       InitAPI:
       LoopAPI:
       StreamOps:
+      VideoAPI:
+      SharedMemAPI:
   github.com/bnema/purego-pipewire/pipewire:
     config:
       all: false
@@ -24,3 +26,8 @@ packages:
       Runtime:
       MainLoop:
       Player:
+  github.com/bnema/purego-pipewire/internal/ports/in:
+    config:
+      all: false
+    interfaces:
+      VideoHandler:

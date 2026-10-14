@@ -9,5 +9,6 @@ func registerAll(h loader.Handles) error {
 	registerLoop(h.PipeWire)
 	registerLoopLock(h.PipeWire)
 	registerStream_playback(h.PipeWire)
+	registerVideo(h.PipeWire)
 	return nil
 }
