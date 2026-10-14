@@ -18,6 +18,7 @@ packages:
       StreamOps:
       VideoAPI:
       SharedMemAPI:
+      VideoStreamAPI:
   github.com/bnema/purego-pipewire/pipewire:
     config:
       all: false

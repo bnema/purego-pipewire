@@ -122,6 +122,123 @@ func (_c *MockRuntime_Init_Call) RunAndReturn(run func() error) *MockRuntime_Ini
 	return _c
 }
 
+// NewContext provides a mock function for the type MockRuntime
+func (_mock *MockRuntime) NewContext(loop pipewire.Loop) (pipewire.Context, error) {
+	ret := _mock.Called(loop)
+
+	if len(ret) == 0 {
+		panic("no return value specified for NewContext")
+	}
+
+	var r0 pipewire.Context
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(pipewire.Loop) (pipewire.Context, error)); ok {
+		return returnFunc(loop)
+	}
+	if returnFunc, ok := ret.Get(0).(func(pipewire.Loop) pipewire.Context); ok {
+		r0 = returnFunc(loop)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(pipewire.Context)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(pipewire.Loop) error); ok {
+		r1 = returnFunc(loop)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockRuntime_NewContext_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'NewContext'
+type MockRuntime_NewContext_Call struct {
+	*mock.Call
+}
+
+// NewContext is a helper method to define mock.On call
+//   - loop pipewire.Loop
+func (_e *MockRuntime_Expecter) NewContext(loop any) *MockRuntime_NewContext_Call {
+	return &MockRuntime_NewContext_Call{Call: _e.mock.On("NewContext", loop)}
+}
+
+func (_c *MockRuntime_NewContext_Call) Run(run func(loop pipewire.Loop)) *MockRuntime_NewContext_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 pipewire.Loop
+		if args[0] != nil {
+			arg0 = args[0].(pipewire.Loop)
+		}
+		run(
+			arg0,
+		)
+	})
+	return _c
+}
+
+func (_c *MockRuntime_NewContext_Call) Return(context pipewire.Context, err error) *MockRuntime_NewContext_Call {
+	_c.Call.Return(context, err)
+	return _c
+}
+
+func (_c *MockRuntime_NewContext_Call) RunAndReturn(run func(loop pipewire.Loop) (pipewire.Context, error)) *MockRuntime_NewContext_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// NewLoop provides a mock function for the type MockRuntime
+func (_mock *MockRuntime) NewLoop() (pipewire.Loop, error) {
+	ret := _mock.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for NewLoop")
+	}
+
+	var r0 pipewire.Loop
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func() (pipewire.Loop, error)); ok {
+		return returnFunc()
+	}
+	if returnFunc, ok := ret.Get(0).(func() pipewire.Loop); ok {
+		r0 = returnFunc()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(pipewire.Loop)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func() error); ok {
+		r1 = returnFunc()
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockRuntime_NewLoop_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'NewLoop'
+type MockRuntime_NewLoop_Call struct {
+	*mock.Call
+}
+
+// NewLoop is a helper method to define mock.On call
+func (_e *MockRuntime_Expecter) NewLoop() *MockRuntime_NewLoop_Call {
+	return &MockRuntime_NewLoop_Call{Call: _e.mock.On("NewLoop")}
+}
+
+func (_c *MockRuntime_NewLoop_Call) Run(run func()) *MockRuntime_NewLoop_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockRuntime_NewLoop_Call) Return(loop pipewire.Loop, err error) *MockRuntime_NewLoop_Call {
+	_c.Call.Return(loop, err)
+	return _c
+}
+
+func (_c *MockRuntime_NewLoop_Call) RunAndReturn(run func() (pipewire.Loop, error)) *MockRuntime_NewLoop_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // NewMainLoop provides a mock function for the type MockRuntime
 func (_mock *MockRuntime) NewMainLoop() (pipewire.MainLoop, error) {
 	ret := _mock.Called()
