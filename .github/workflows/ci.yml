@@ -1,0 +1,39 @@
+name: CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+permissions:
+  contents: read
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  # Runs as root in an Arch container, on Forgejo and GitHub alike. Arch
+  # ships the libpipewire the bindings are generated against; gcc is for the
+  # race detector. The integration tests need a running PipeWire and are run
+  # by hand (go test -tags integration ./integration/).
+  check:
+    runs-on: ubuntu-latest
+    container:
+      image: archlinux:latest
+      options: --init
+    steps:
+      - run: pacman -Syu --noconfirm --needed git go gcc pipewire
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          test "$(go env GOVERSION | cut -d. -f1-2)" = "go$(sed -n 's/^go \([0-9]*\.[0-9]*\).*/\1/p' go.mod)"
+      - run: test -z "$(gofmt -l spa pipewire integration internal/core internal/ports)"
+      - run: CGO_ENABLED=0 go vet ./...
+      - run: CGO_ENABLED=0 go vet -tags integration ./integration/
+      - run: go run honnef.co/go/tools/cmd/staticcheck@2026.2.2 ./...
+      - run: CGO_ENABLED=0 go test -count=1 ./...
+      - run: CGO_ENABLED=1 go test -race -count=1 ./...
+      - name: generated code is current
+        run: |
+          go install github.com/vektra/mockery/v3@v3.8.1
+          PATH="$HOME/go/bin:$PATH" GOWORK=off go generate ./...
+          git diff --exit-code
