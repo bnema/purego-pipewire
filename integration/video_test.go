@@ -13,7 +13,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/bnema/purego-pipewire/internal/ports/in/mocks"
 	"github.com/bnema/purego-pipewire/pipewire"
+	"github.com/bnema/purego-pipewire/spa"
+	"github.com/stretchr/testify/mock"
 )
 
 const (
@@ -21,9 +24,9 @@ const (
 	vidH = 240
 )
 
-// videoHandler records events. It runs on the loop thread; the fields the test
-// goroutine reads are atomics, but the test runs on the loop thread as well.
-type videoHandler struct {
+// videoEvents records what the source reports. Callbacks run on the loop
+// thread; the fields the test reads are atomics.
+type videoEvents struct {
 	state    atomic.Int32
 	nodeID   atomic.Uint32
 	format   atomic.Uint32
@@ -34,29 +37,30 @@ type videoHandler struct {
 	statesCh chan int32
 }
 
-func newVideoHandler() *videoHandler {
-	return &videoHandler{statesCh: make(chan int32, 64)}
+// newVideoHandler returns a generated VideoHandler mock that records every
+// callback into the returned events.
+func newVideoHandler(t *testing.T) (*mocks.MockVideoHandler, *videoEvents) {
+	ev := &videoEvents{statesCh: make(chan int32, 64)}
+	h := mocks.NewMockVideoHandler(t)
+	h.EXPECT().StateChanged(mock.Anything, mock.Anything, mock.Anything).Run(func(state int32, nodeID uint32, _ string) {
+		ev.state.Store(state)
+		if nodeID != 0 {
+			ev.nodeID.Store(nodeID)
+		}
+		select {
+		case ev.statesCh <- state:
+		default:
+		}
+	}).Maybe()
+	h.EXPECT().FormatChanged(mock.Anything, mock.Anything, mock.Anything, mock.Anything).Run(func(f spa.VideoFormat, w, hh, stride int) {
+		ev.format.Store(uint32(f))
+		ev.width.Store(int32(w))
+		ev.height.Store(int32(hh))
+		ev.stride.Store(int32(stride))
+	}).Maybe()
+	h.EXPECT().BuffersChanged().Run(func() { ev.buffers.Add(1) }).Maybe()
+	return h, ev
 }
-
-func (h *videoHandler) StateChanged(state int32, nodeID uint32, err string) {
-	h.state.Store(state)
-	if nodeID != 0 {
-		h.nodeID.Store(nodeID)
-	}
-	select {
-	case h.statesCh <- state:
-	default:
-	}
-}
-
-func (h *videoHandler) FormatChanged(f pipewire.VideoFormat, w, hh, stride int) {
-	h.format.Store(uint32(f))
-	h.width.Store(int32(w))
-	h.height.Store(int32(hh))
-	h.stride.Store(int32(stride))
-}
-
-func (h *videoHandler) BuffersChanged() { h.buffers.Add(1) }
 
 type videoEnv struct {
 	rt      pipewire.Runtime
@@ -64,7 +68,7 @@ type videoEnv struct {
 	ctx     pipewire.Context
 	core    pipewire.Core
 	src     *pipewire.VideoSource
-	handler *videoHandler
+	handler *videoEvents
 }
 
 func (e *videoEnv) close() {
@@ -108,7 +112,8 @@ func newVideoEnv(t *testing.T) *videoEnv {
 	if err != nil {
 		t.Fatalf("Init: %v", err)
 	}
-	e := &videoEnv{rt: rt, handler: newVideoHandler()}
+	h, ev := newVideoHandler(t)
+	e := &videoEnv{rt: rt, handler: ev}
 	if e.loop, err = rt.NewLoop(); err != nil {
 		e.close()
 		t.Fatalf("NewLoop: %v", err)
@@ -124,7 +129,7 @@ func newVideoEnv(t *testing.T) *videoEnv {
 	e.src, err = e.core.NewVideoSource(pipewire.VideoConfig{
 		Name: "purego-pipewire-test", Width: vidW, Height: vidH, MaxFPS: 60,
 		Formats: []pipewire.VideoFormat{pipewire.VideoFormatBGRx},
-	}, e.handler)
+	}, h)
 	if err != nil {
 		e.close()
 		t.Fatalf("NewVideoSource: %v", err)
