@@ -115,9 +115,15 @@ if err != nil {
 }
 defer rt.Deinit()
 
-loop, _ := rt.NewLoop()
+loop, err := rt.NewLoop()
+if err != nil {
+	return err
+}
 defer loop.Destroy()
-ctx, _ := rt.NewContext(loop)
+ctx, err := rt.NewContext(loop)
+if err != nil {
+	return err
+}
 defer ctx.Destroy()
 core, err := ctx.Connect()
 if err != nil {
@@ -151,8 +157,9 @@ if b := src.Dequeue(); b != nil { // nil: no buffer is free, skip the frame
 
 Buffers that PipeWire removes while you still hold them (renegotiation,
 `Resize`, `Destroy`, the consumer leaving) stay mapped until you hand them back
-with `Queue` or `Release`. `Resize` and `Destroy` are best called when no buffer
-is borrowed. A consumer that is not a plain `pipewiresrc` may need to declare
+with `Queue` or `Release`. `Resize` fails with `ErrVideoBorrowed` while a buffer
+is borrowed, and `Destroy` is best called when none is. Formats are BGRx and
+BGRA. A consumer that is not a plain `pipewiresrc` may need to declare
 `media.type=Video` (for example `pipewiresrc stream-properties=props,media.type=Video`)
 for WirePlumber to link it.
 
