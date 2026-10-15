@@ -24,9 +24,19 @@ const (
 	StreamStateStreaming   int32 = 3
 )
 
+// Errors returned by NewVideoSource and VideoSource, for errors.Is.
+var (
+	ErrVideoConfig       = core.ErrVideoConfig
+	ErrVideoTableFull    = core.ErrVideoTableFull
+	ErrVideoStreamCreate = core.ErrVideoStreamCreate
+	ErrVideoConnect      = core.ErrVideoConnect
+	ErrVideoResize       = core.ErrVideoResize
+	ErrVideoBorrowed     = core.ErrVideoBorrowed
+)
+
 // VideoConfig configures a VideoSource: the node name, the initial size, the
 // maximum frame rate (60 when zero) and the accepted formats (BGRx when
-// empty; at most 4, the first is preferred).
+// empty, else BGRx and/or BGRA; the first is preferred).
 type VideoConfig = core.VideoConfig
 
 // VideoHandler receives VideoSource events. Every method runs on the loop
@@ -64,6 +74,6 @@ type VideoBuffer = core.VideoBuffer
 //
 // Buffers PipeWire removes (renegotiation, Resize, Destroy, consumer
 // disconnect) stay mapped while borrowed and are unmapped when given back with
-// Queue or Release. Resize and Destroy are best called when no buffer is
-// borrowed. DMA-BUF is not supported.
+// Queue or Release. Resize fails with ErrVideoBorrowed while a buffer is
+// borrowed; Destroy is best called when none is. DMA-BUF is not supported.
 type VideoSource = core.VideoSource

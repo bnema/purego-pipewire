@@ -427,11 +427,22 @@ func TestVideoSourceResize(t *testing.T) {
 	if err := r.src.Resize(0, 6); err == nil {
 		t.Fatal("Resize(0, 6) accepted")
 	}
+	// A borrowed buffer holds a slot the replacements need.
+	r.negotiate()
+	f := newFakeBuf(1 << spa.DataMemFd)
+	r.add(f, 42)
+	r.api.EXPECT().PWStreamDequeueBuffer(r.stream).Return(f.ptr()).Once()
+	b := r.src.Dequeue()
+	if err := r.src.Resize(8, 6); !errors.Is(err, ErrVideoBorrowed) {
+		t.Fatalf("Resize with a borrowed buffer: %v, want ErrVideoBorrowed", err)
+	}
+	r.api.EXPECT().PWStreamReturnBuffer(r.stream, f.ptr()).Return(0).Once()
+	r.src.Release(b)
 	r.api.EXPECT().PWStreamUpdateParams(r.stream, mock.Anything, uint32(1)).Return(-22).Once()
 	if err := r.src.Resize(8, 6); err == nil {
 		t.Fatal("Resize accepted a failing update_params")
 	}
-	r.expectDestroy(0)
+	r.expectDestroy(1)
 	r.src.Destroy()
 	if err := r.src.Resize(8, 6); err == nil {
 		t.Fatal("Resize after Destroy accepted")
@@ -449,6 +460,9 @@ func TestNewVideoSourceErrors(t *testing.T) {
 	}
 	if _, err := core.NewVideoSource(VideoConfig{Width: 1 << 15, Height: 1 << 14}, h); !errors.Is(err, ErrVideoConfig) {
 		t.Errorf("frame size over int32: %v", err)
+	}
+	if _, err := core.NewVideoSource(VideoConfig{Width: 10, Height: 10, Formats: []spa.VideoFormat{spa.VideoFormatBGRx, 18}}, h); !errors.Is(err, ErrVideoConfig) {
+		t.Errorf("unsupported format: %v", err)
 	}
 	if _, err := core.NewVideoSource(VideoConfig{Width: 10, Height: 10}, nil); !errors.Is(err, ErrVideoConfig) {
 		t.Errorf("nil handler: %v", err)

@@ -39,10 +39,11 @@ var (
 	ErrVideoStreamCreate = errors.New("failed to create video stream")
 	ErrVideoConnect      = errors.New("failed to connect video stream")
 	ErrVideoResize       = errors.New("failed to resize video stream")
+	ErrVideoBorrowed     = errors.New("video buffer still borrowed")
 )
 
 // VideoConfig configures a VideoSource. MaxFPS defaults to 60 and Formats to
-// BGRx.
+// BGRx. Only BGRx and BGRA are supported: buffers hold 4 bytes per pixel.
 type VideoConfig struct {
 	Name          string
 	Width, Height int
@@ -227,6 +228,11 @@ func (c *Core) NewVideoSource(cfg VideoConfig, h portin.VideoHandler) (*VideoSou
 		if len(cfg.Formats) > len(s.formats) {
 			return nil, ErrVideoConfig
 		}
+		for _, f := range cfg.Formats {
+			if f != spa.VideoFormatBGRx && f != spa.VideoFormatBGRA {
+				return nil, fmt.Errorf("%w: unsupported format %d", ErrVideoConfig, f)
+			}
+		}
 		s.nformats = copy(s.formats[:], cfg.Formats)
 	}
 	s.cfg.Formats = nil // the slot-owned array is the source of truth
@@ -394,15 +400,20 @@ func validVideoSize(w, h int) bool {
 	return w > 0 && h > 0 && w <= 1<<15 && h <= 1<<15 && w*4*h <= math.MaxInt32
 }
 
-// Resize renegotiates the stream with a new size. Buffers PipeWire replaces
-// stay valid while borrowed; hand them back with Queue or Release (ideally
-// resize when none is borrowed).
+// Resize renegotiates the stream with a new size. It fails with
+// ErrVideoBorrowed while a buffer is borrowed: PipeWire replaces every
+// buffer, and the replacements need the slots the borrowed ones hold.
 func (s *VideoSource) Resize(w, h int) error {
 	if s.stream == nil {
 		return ErrVideoResize
 	}
 	if !validVideoSize(w, h) {
 		return ErrVideoConfig
+	}
+	for i := range s.slots {
+		if s.slots[i].borrowed {
+			return ErrVideoBorrowed
+		}
 	}
 	if _, err := spa.VideoEnumFormat(s.enumPod[:], w, h, s.cfg.MaxFPS, s.formats[:s.nformats]...); err != nil {
 		return fmt.Errorf("%w: %v", ErrVideoResize, err)
