@@ -17,10 +17,19 @@ func NewMockStreamOps(t interface {
 	mock.TestingT
 	Cleanup(func())
 }) *MockStreamOps {
+	if helper, ok := t.(interface{ Helper() }); ok {
+		helper.Helper()
+	}
+
 	mock := &MockStreamOps{}
 	mock.Mock.Test(t)
 
-	t.Cleanup(func() { mock.AssertExpectations(t) })
+	t.Cleanup(func() {
+		if helper, ok := t.(interface{ Helper() }); ok {
+			helper.Helper()
+		}
+		mock.AssertExpectations(t)
+	})
 
 	return mock
 }
@@ -63,7 +72,7 @@ type MockStreamOps_ConnectPlaybackStream_Call struct {
 // ConnectPlaybackStream is a helper method to define mock.On call
 //   - streamPtr unsafe.Pointer
 //   - format out.PlaybackFormat
-func (_e *MockStreamOps_Expecter) ConnectPlaybackStream(streamPtr interface{}, format interface{}) *MockStreamOps_ConnectPlaybackStream_Call {
+func (_e *MockStreamOps_Expecter) ConnectPlaybackStream(streamPtr any, format any) *MockStreamOps_ConnectPlaybackStream_Call {
 	return &MockStreamOps_ConnectPlaybackStream_Call{Call: _e.mock.On("ConnectPlaybackStream", streamPtr, format)}
 }
 
@@ -183,7 +192,7 @@ type MockStreamOps_CreatePlaybackStream_Call struct {
 //   - loopPtr unsafe.Pointer
 //   - name string
 //   - onProcess func()
-func (_e *MockStreamOps_Expecter) CreatePlaybackStream(loopPtr interface{}, name interface{}, onProcess interface{}) *MockStreamOps_CreatePlaybackStream_Call {
+func (_e *MockStreamOps_Expecter) CreatePlaybackStream(loopPtr any, name any, onProcess any) *MockStreamOps_CreatePlaybackStream_Call {
 	return &MockStreamOps_CreatePlaybackStream_Call{Call: _e.mock.On("CreatePlaybackStream", loopPtr, name, onProcess)}
 }
 
@@ -244,7 +253,7 @@ type MockStreamOps_DequeueBuffer_Call struct {
 
 // DequeueBuffer is a helper method to define mock.On call
 //   - streamPtr unsafe.Pointer
-func (_e *MockStreamOps_Expecter) DequeueBuffer(streamPtr interface{}) *MockStreamOps_DequeueBuffer_Call {
+func (_e *MockStreamOps_Expecter) DequeueBuffer(streamPtr any) *MockStreamOps_DequeueBuffer_Call {
 	return &MockStreamOps_DequeueBuffer_Call{Call: _e.mock.On("DequeueBuffer", streamPtr)}
 }
 
@@ -284,7 +293,7 @@ type MockStreamOps_DestroyMainLoop_Call struct {
 
 // DestroyMainLoop is a helper method to define mock.On call
 //   - loopPtr unsafe.Pointer
-func (_e *MockStreamOps_Expecter) DestroyMainLoop(loopPtr interface{}) *MockStreamOps_DestroyMainLoop_Call {
+func (_e *MockStreamOps_Expecter) DestroyMainLoop(loopPtr any) *MockStreamOps_DestroyMainLoop_Call {
 	return &MockStreamOps_DestroyMainLoop_Call{Call: _e.mock.On("DestroyMainLoop", loopPtr)}
 }
 
@@ -324,7 +333,7 @@ type MockStreamOps_DestroyStream_Call struct {
 
 // DestroyStream is a helper method to define mock.On call
 //   - streamPtr unsafe.Pointer
-func (_e *MockStreamOps_Expecter) DestroyStream(streamPtr interface{}) *MockStreamOps_DestroyStream_Call {
+func (_e *MockStreamOps_Expecter) DestroyStream(streamPtr any) *MockStreamOps_DestroyStream_Call {
 	return &MockStreamOps_DestroyStream_Call{Call: _e.mock.On("DestroyStream", streamPtr)}
 }
 
@@ -375,7 +384,7 @@ type MockStreamOps_DisconnectStream_Call struct {
 
 // DisconnectStream is a helper method to define mock.On call
 //   - streamPtr unsafe.Pointer
-func (_e *MockStreamOps_Expecter) DisconnectStream(streamPtr interface{}) *MockStreamOps_DisconnectStream_Call {
+func (_e *MockStreamOps_Expecter) DisconnectStream(streamPtr any) *MockStreamOps_DisconnectStream_Call {
 	return &MockStreamOps_DisconnectStream_Call{Call: _e.mock.On("DisconnectStream", streamPtr)}
 }
 
@@ -427,7 +436,7 @@ type MockStreamOps_QueueBuffer_Call struct {
 // QueueBuffer is a helper method to define mock.On call
 //   - streamPtr unsafe.Pointer
 //   - bufPtr unsafe.Pointer
-func (_e *MockStreamOps_Expecter) QueueBuffer(streamPtr interface{}, bufPtr interface{}) *MockStreamOps_QueueBuffer_Call {
+func (_e *MockStreamOps_Expecter) QueueBuffer(streamPtr any, bufPtr any) *MockStreamOps_QueueBuffer_Call {
 	return &MockStreamOps_QueueBuffer_Call{Call: _e.mock.On("QueueBuffer", streamPtr, bufPtr)}
 }
 
@@ -472,7 +481,7 @@ type MockStreamOps_QuitMainLoop_Call struct {
 
 // QuitMainLoop is a helper method to define mock.On call
 //   - loopPtr unsafe.Pointer
-func (_e *MockStreamOps_Expecter) QuitMainLoop(loopPtr interface{}) *MockStreamOps_QuitMainLoop_Call {
+func (_e *MockStreamOps_Expecter) QuitMainLoop(loopPtr any) *MockStreamOps_QuitMainLoop_Call {
 	return &MockStreamOps_QuitMainLoop_Call{Call: _e.mock.On("QuitMainLoop", loopPtr)}
 }
 
@@ -523,7 +532,7 @@ type MockStreamOps_RunMainLoop_Call struct {
 
 // RunMainLoop is a helper method to define mock.On call
 //   - loopPtr unsafe.Pointer
-func (_e *MockStreamOps_Expecter) RunMainLoop(loopPtr interface{}) *MockStreamOps_RunMainLoop_Call {
+func (_e *MockStreamOps_Expecter) RunMainLoop(loopPtr any) *MockStreamOps_RunMainLoop_Call {
 	return &MockStreamOps_RunMainLoop_Call{Call: _e.mock.On("RunMainLoop", loopPtr)}
 }
 
@@ -575,7 +584,7 @@ type MockStreamOps_SetStreamActive_Call struct {
 // SetStreamActive is a helper method to define mock.On call
 //   - streamPtr unsafe.Pointer
 //   - active bool
-func (_e *MockStreamOps_Expecter) SetStreamActive(streamPtr interface{}, active interface{}) *MockStreamOps_SetStreamActive_Call {
+func (_e *MockStreamOps_Expecter) SetStreamActive(streamPtr any, active any) *MockStreamOps_SetStreamActive_Call {
 	return &MockStreamOps_SetStreamActive_Call{Call: _e.mock.On("SetStreamActive", streamPtr, active)}
 }
 

@@ -77,6 +77,78 @@ func (a *StreamPlaybackCAPIAdapter) PWStreamDestroy(stream unsafe.Pointer) {
 }
 
 
+// VideoCAPIAdapter forwards calls to the generated CAPI variables.
+type VideoCAPIAdapter struct{}
+
+func (a *VideoCAPIAdapter) PWLoopNew(props unsafe.Pointer) unsafe.Pointer {
+	return pw_loop_new(props)
+}
+
+func (a *VideoCAPIAdapter) PWLoopDestroy(loop unsafe.Pointer) {
+	pw_loop_destroy(loop)
+}
+
+func (a *VideoCAPIAdapter) PWLoopGetFd(loop unsafe.Pointer) int32 {
+	return pw_loop_get_fd(loop)
+}
+
+func (a *VideoCAPIAdapter) PWLoopEnter(loop unsafe.Pointer) {
+	pw_loop_enter(loop)
+}
+
+func (a *VideoCAPIAdapter) PWLoopLeave(loop unsafe.Pointer) {
+	pw_loop_leave(loop)
+}
+
+func (a *VideoCAPIAdapter) PWLoopIterate(loop unsafe.Pointer, timeout int32) int32 {
+	return pw_loop_iterate(loop, timeout)
+}
+
+func (a *VideoCAPIAdapter) PWContextNew(loop unsafe.Pointer, props unsafe.Pointer, user_data_size uintptr) unsafe.Pointer {
+	return pw_context_new(loop, props, user_data_size)
+}
+
+func (a *VideoCAPIAdapter) PWContextConnect(context unsafe.Pointer, props unsafe.Pointer, user_data_size uintptr) unsafe.Pointer {
+	return pw_context_connect(context, props, user_data_size)
+}
+
+func (a *VideoCAPIAdapter) PWContextDestroy(context unsafe.Pointer) {
+	pw_context_destroy(context)
+}
+
+func (a *VideoCAPIAdapter) PWCoreDisconnect(core unsafe.Pointer) int32 {
+	return pw_core_disconnect(core)
+}
+
+func (a *VideoCAPIAdapter) PWPropertiesNewString(args *byte) unsafe.Pointer {
+	return pw_properties_new_string(args)
+}
+
+func (a *VideoCAPIAdapter) PWStreamNew(core unsafe.Pointer, name *byte, props unsafe.Pointer) unsafe.Pointer {
+	return pw_stream_new(core, name, props)
+}
+
+func (a *VideoCAPIAdapter) PWStreamUpdateParams(stream unsafe.Pointer, params unsafe.Pointer, n_params uint32) int32 {
+	return pw_stream_update_params(stream, params, n_params)
+}
+
+func (a *VideoCAPIAdapter) PWStreamGetNodeId(stream unsafe.Pointer) uint32 {
+	return pw_stream_get_node_id(stream)
+}
+
+func (a *VideoCAPIAdapter) PWStreamTriggerProcess(stream unsafe.Pointer) int32 {
+	return pw_stream_trigger_process(stream)
+}
+
+func (a *VideoCAPIAdapter) PWStreamIsDriving(stream unsafe.Pointer) bool {
+	return pw_stream_is_driving(stream)
+}
+
+func (a *VideoCAPIAdapter) PWStreamReturnBuffer(stream unsafe.Pointer, buffer unsafe.Pointer) int32 {
+	return pw_stream_return_buffer(stream, buffer)
+}
+
+
 
 // defaultCAPI implements the portout.CAPI composite interface by embedding
 // all generated group adapters. It is constructed by newDefaultCAPI.
@@ -84,6 +156,7 @@ type defaultCAPI struct {
 	InitCAPIAdapter
 	LoopCAPIAdapter
 	StreamPlaybackCAPIAdapter
+	VideoCAPIAdapter
 }
 
 // newDefaultCAPI returns a defaultCAPI whose embedded adapters forward

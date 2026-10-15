@@ -3,27 +3,53 @@ package core
 import (
 	"errors"
 	"unsafe"
+
+	portout "github.com/bnema/purego-pipewire/internal/ports/out"
 )
 
 var ErrContextCreate = errors.New("failed to create context")
 
+// Context wraps a pw_context. Create it with Runtime.NewContext and destroy
+// it before the Loop it was created on.
 type Context struct {
-	ptr unsafe.Pointer
+	ptr  unsafe.Pointer
+	capi portout.VideoStreamAPI
+	shm  portout.SharedMemAPI
 }
 
-func (r *Runtime) NewContext() (*Context, error) {
-	// For now, return a placeholder - full implementation
-	// will require generated context methods
-	return nil, ErrContextCreate
+// NewContext creates a pw_context that runs on loop. The loop must outlive
+// the context.
+func (r *Runtime) NewContext(loop *Loop) (*Context, error) {
+	if loop == nil || loop.ptr == nil {
+		return nil, ErrContextCreate
+	}
+	ptr := r.capi.PWContextNew(loop.ptr, nil, 0)
+	if ptr == nil {
+		return nil, ErrContextCreate
+	}
+	return &Context{ptr: ptr, capi: r.capi, shm: memfdShm{}}, nil
 }
 
+// Destroy destroys the context. All cores connected from it must have been
+// disconnected first. Destroy is idempotent.
 func (c *Context) Destroy() {
-	// Placeholder for context destruction
+	if c.ptr == nil {
+		return
+	}
+	c.capi.PWContextDestroy(c.ptr)
+	c.ptr = nil
 }
 
+// Connect connects to the PipeWire daemon.
 func (c *Context) Connect() (*Core, error) {
-	// Placeholder - will connect and return a Core
-	return nil, errors.New("not implemented")
+	if c.ptr == nil {
+		return nil, ErrCoreConnect
+	}
+	ptr := c.capi.PWContextConnect(c.ptr, nil, 0)
+	if ptr == nil {
+		return nil, ErrCoreConnect
+	}
+	return &Core{ptr: ptr, capi: c.capi, shm: c.shm}, nil
 }
 
 func (c *Context) Ptr() unsafe.Pointer {

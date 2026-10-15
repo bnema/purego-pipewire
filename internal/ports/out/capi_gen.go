@@ -7,4 +7,5 @@ type CAPI interface {
 	InitAPI
 	LoopAPI
 	StreamPlaybackAPI
+	VideoAPI
 }

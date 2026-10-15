@@ -16,10 +16,19 @@ func NewMockLoopAPI(t interface {
 	mock.TestingT
 	Cleanup(func())
 }) *MockLoopAPI {
+	if helper, ok := t.(interface{ Helper() }); ok {
+		helper.Helper()
+	}
+
 	mock := &MockLoopAPI{}
 	mock.Mock.Test(t)
 
-	t.Cleanup(func() { mock.AssertExpectations(t) })
+	t.Cleanup(func() {
+		if helper, ok := t.(interface{ Helper() }); ok {
+			helper.Helper()
+		}
+		mock.AssertExpectations(t)
+	})
 
 	return mock
 }
@@ -50,7 +59,7 @@ type MockLoopAPI_PWMainLoopDestroy_Call struct {
 
 // PWMainLoopDestroy is a helper method to define mock.On call
 //   - loop unsafe.Pointer
-func (_e *MockLoopAPI_Expecter) PWMainLoopDestroy(loop interface{}) *MockLoopAPI_PWMainLoopDestroy_Call {
+func (_e *MockLoopAPI_Expecter) PWMainLoopDestroy(loop any) *MockLoopAPI_PWMainLoopDestroy_Call {
 	return &MockLoopAPI_PWMainLoopDestroy_Call{Call: _e.mock.On("PWMainLoopDestroy", loop)}
 }
 
@@ -101,7 +110,7 @@ type MockLoopAPI_PWMainLoopGetLoop_Call struct {
 
 // PWMainLoopGetLoop is a helper method to define mock.On call
 //   - loop unsafe.Pointer
-func (_e *MockLoopAPI_Expecter) PWMainLoopGetLoop(loop interface{}) *MockLoopAPI_PWMainLoopGetLoop_Call {
+func (_e *MockLoopAPI_Expecter) PWMainLoopGetLoop(loop any) *MockLoopAPI_PWMainLoopGetLoop_Call {
 	return &MockLoopAPI_PWMainLoopGetLoop_Call{Call: _e.mock.On("PWMainLoopGetLoop", loop)}
 }
 
@@ -152,7 +161,7 @@ type MockLoopAPI_PWMainLoopNew_Call struct {
 
 // PWMainLoopNew is a helper method to define mock.On call
 //   - props unsafe.Pointer
-func (_e *MockLoopAPI_Expecter) PWMainLoopNew(props interface{}) *MockLoopAPI_PWMainLoopNew_Call {
+func (_e *MockLoopAPI_Expecter) PWMainLoopNew(props any) *MockLoopAPI_PWMainLoopNew_Call {
 	return &MockLoopAPI_PWMainLoopNew_Call{Call: _e.mock.On("PWMainLoopNew", props)}
 }
 
@@ -203,7 +212,7 @@ type MockLoopAPI_PWMainLoopQuit_Call struct {
 
 // PWMainLoopQuit is a helper method to define mock.On call
 //   - loop unsafe.Pointer
-func (_e *MockLoopAPI_Expecter) PWMainLoopQuit(loop interface{}) *MockLoopAPI_PWMainLoopQuit_Call {
+func (_e *MockLoopAPI_Expecter) PWMainLoopQuit(loop any) *MockLoopAPI_PWMainLoopQuit_Call {
 	return &MockLoopAPI_PWMainLoopQuit_Call{Call: _e.mock.On("PWMainLoopQuit", loop)}
 }
 
@@ -254,7 +263,7 @@ type MockLoopAPI_PWMainLoopRun_Call struct {
 
 // PWMainLoopRun is a helper method to define mock.On call
 //   - loop unsafe.Pointer
-func (_e *MockLoopAPI_Expecter) PWMainLoopRun(loop interface{}) *MockLoopAPI_PWMainLoopRun_Call {
+func (_e *MockLoopAPI_Expecter) PWMainLoopRun(loop any) *MockLoopAPI_PWMainLoopRun_Call {
 	return &MockLoopAPI_PWMainLoopRun_Call{Call: _e.mock.On("PWMainLoopRun", loop)}
 }
 
