@@ -35,8 +35,9 @@ type player struct {
 	// controlMu protects stream lifetime until teardown detaches owned resources.
 	controlMu sync.RWMutex
 	// closeDone and closeErr are protected by mu; only the Close owner tears down.
-	closeDone chan struct{}
-	closeErr  error
+	closeDone      chan struct{}
+	closeErr       error
+	closeNotifying bool
 
 	// pwView reuses Go slice headers for PipeWire callback buffers. Its native
 	// references are cleared when each callback completes.
@@ -273,21 +274,28 @@ func (p *player) Stop() error {
 	return p.transition(PlayerStateStopped)
 }
 
-// Close permanently shuts down the player
+// Close permanently shuts down the player. Calls during the synchronous Closing
+// notification return nil immediately, allowing notification callbacks to reenter.
+// Other concurrent calls wait for teardown completion.
 func (p *player) Close() error {
 	p.mu.Lock()
+	current := p.State()
+	if current == PlayerStateClosed {
+		err := p.closeErr
+		p.mu.Unlock()
+		return err
+	}
 	if done := p.closeDone; done != nil {
+		if p.closeNotifying {
+			p.mu.Unlock()
+			return nil
+		}
 		p.mu.Unlock()
 		<-done
 		p.mu.Lock()
 		err := p.closeErr
 		p.mu.Unlock()
 		return err
-	}
-	current := p.State()
-	if current == PlayerStateClosed {
-		p.mu.Unlock()
-		return nil
 	}
 	if current != PlayerStateClosing && !isValidTransition(current, PlayerStateClosing) {
 		p.mu.Unlock()
@@ -296,19 +304,28 @@ func (p *player) Close() error {
 	p.closeDone = make(chan struct{})
 	p.setState(PlayerStateClosing)
 	cb := p.callbacks.OnStateChange
+	notifyClosing := cb != nil && current != PlayerStateClosing
+	p.closeNotifying = notifyClosing
 	p.mu.Unlock()
-	if cb != nil && current != PlayerStateClosing {
+	if notifyClosing {
 		cb(PlayerStateClosing)
+		p.mu.Lock()
+		p.closeNotifying = false
+		p.mu.Unlock()
 	}
 
 	// No lifetime writer lock is held across loop-dependent native operations.
 	p.teardown()
-	err := p.transition(PlayerStateClosed)
 	p.mu.Lock()
-	p.closeErr = err
+	p.setState(PlayerStateClosed)
+	p.closeErr = nil
 	close(p.closeDone)
 	p.mu.Unlock()
-	return err
+	// Publish completion before notification so Closed callbacks can reenter Close.
+	if cb != nil {
+		cb(PlayerStateClosed)
+	}
+	return nil
 }
 
 // ensureRuntime ensures the player has a usable StreamOps implementation.
@@ -518,7 +535,8 @@ func (p *Player) Stop() error {
 	return p.p.Stop()
 }
 
-// Close permanently shuts down the player
+// Close permanently shuts down the player. Calls during the synchronous Closing
+// notification return nil immediately; other concurrent calls wait for teardown.
 func (p *Player) Close() error {
 	if p.p == nil {
 		return nil

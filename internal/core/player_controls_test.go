@@ -196,7 +196,7 @@ func TestConcurrentCloseWaitsForOwner(t *testing.T) {
 		synctest.Wait()
 		select {
 		case err := <-second:
-			t.Errorf("second Close returned during disconnect: %v", err)
+			t.Fatalf("second Close returned during disconnect: %v", err)
 		default:
 		}
 		if p.State() != PlayerStateClosing || closedNotifications.Load() != 0 {
@@ -209,6 +209,7 @@ func TestConcurrentCloseWaitsForOwner(t *testing.T) {
 		if err := <-second; err != nil {
 			t.Errorf("waiter: %v", err)
 		}
+		<-firstDone
 		if p.State() != PlayerStateClosed || closedNotifications.Load() != 1 {
 			t.Error("expected one Closed notification")
 		}
@@ -216,4 +217,36 @@ func TestConcurrentCloseWaitsForOwner(t *testing.T) {
 			t.Fatal(err)
 		}
 	})
+}
+
+func TestCloseReentrantNotifications(t *testing.T) {
+	for _, notification := range []PlayerState{PlayerStateClosing, PlayerStateClosed} {
+		t.Run(map[PlayerState]string{PlayerStateClosing: "closing", PlayerStateClosed: "closed"}[notification], func(t *testing.T) {
+			synctest.Test(t, func(t *testing.T) {
+				var p *player
+				notifications := []PlayerState{}
+				nestedDone := make(chan error, 1)
+				p = newPlayer(PlayerConfig{}, PlayerCallbacks{OnStateChange: func(state PlayerState) {
+					notifications = append(notifications, state)
+					if state == notification {
+						nestedDone <- p.Close()
+					}
+				}})
+				ownerDone := make(chan error, 1)
+				go func() { ownerDone <- p.Close() }()
+				if err := <-ownerDone; err != nil {
+					t.Fatal(err)
+				}
+				if err := <-nestedDone; err != nil {
+					t.Fatal(err)
+				}
+				if len(notifications) != 2 || notifications[0] != PlayerStateClosing || notifications[1] != PlayerStateClosed {
+					t.Fatalf("notifications: %v", notifications)
+				}
+				if err := p.Close(); err != nil {
+					t.Fatal(err)
+				}
+			})
+		})
+	}
 }
