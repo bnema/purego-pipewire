@@ -9,7 +9,7 @@ import (
 func TestControlValidation(t *testing.T) {
 	ops := &streamOpsImpl{}
 	for _, values := range [][]spa.PropValue{
-		nil, {spa.PropVolume.Value(1), spa.PropVolume.Value(1), spa.PropVolume.Value(1), spa.PropVolume.Value(1), spa.PropVolume.Value(1)},
+		nil, {{ID: 0, Values: []float32{1}}}, {spa.PropVolume.Value(1), {ID: 0, Values: []float32{1}}}, {spa.PropVolume.Value(1), spa.PropVolume.Value(1), spa.PropVolume.Value(1), spa.PropVolume.Value(1), spa.PropVolume.Value(1)},
 		{{ID: spa.Prop(spa.PropVolume)}},
 		{{ID: 0x1000e, Values: []float32{1}}},
 		{{ID: 0x10012, Values: []float32{1}}},

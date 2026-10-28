@@ -169,6 +169,9 @@ func (s *streamOpsImpl) SetStreamControl(streamPtr unsafe.Pointer, controls ...s
 		return fmt.Errorf("pw_stream_set_control: at least one control is required")
 	}
 	for _, c := range controls {
+		if c.ID == 0 {
+			return fmt.Errorf("pw_stream_set_control: control ID zero is reserved for the sentinel")
+		}
 		if c.ID == 0x1000E || (c.ID >= 0x10012 && c.ID <= 0x10015) {
 			return fmt.Errorf("pw_stream_set_control: integer control %#x is unsupported", c.ID)
 		}
