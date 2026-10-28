@@ -34,9 +34,8 @@ type player struct {
 	mu        sync.Mutex
 	// controlMu protects stream lifetime until teardown detaches owned resources.
 	controlMu sync.RWMutex
-	// closeDone and closeErr are protected by mu; only the Close owner tears down.
+	// closeDone is protected by mu; only the Close owner tears down.
 	closeDone   chan struct{}
-	closeErr    error
 	stateQueue  []PlayerState
 	dispatching bool
 
@@ -303,17 +302,13 @@ func (p *player) Close() error {
 	p.mu.Lock()
 	current := p.State()
 	if current == PlayerStateClosed {
-		err := p.closeErr
 		p.mu.Unlock()
-		return err
+		return nil
 	}
 	if done := p.closeDone; done != nil {
 		p.mu.Unlock()
 		<-done
-		p.mu.Lock()
-		err := p.closeErr
-		p.mu.Unlock()
-		return err
+		return nil
 	}
 	if current != PlayerStateClosing && !isValidTransition(current, PlayerStateClosing) {
 		p.mu.Unlock()
@@ -330,7 +325,6 @@ func (p *player) Close() error {
 	p.teardown()
 	p.mu.Lock()
 	p.setState(PlayerStateClosed)
-	p.closeErr = nil
 	close(p.closeDone)
 	p.enqueueStateLocked(PlayerStateClosed)
 	p.mu.Unlock()
