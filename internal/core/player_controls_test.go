@@ -32,7 +32,12 @@ func TestCloseWaitsForControls(t *testing.T) {
 	for _, get := range []bool{false, true} {
 		t.Run(map[bool]string{false: "set", true: "get"}[get], func(t *testing.T) {
 			ops := &controlBlockingOps{entered: make(chan struct{}), release: make(chan struct{}), destroyed: make(chan struct{})}
-			p := newPlayer(PlayerConfig{}, PlayerCallbacks{})
+			closing := make(chan struct{})
+			p := newPlayer(PlayerConfig{}, PlayerCallbacks{OnStateChange: func(state PlayerState) {
+				if state == PlayerStateClosing {
+					close(closing)
+				}
+			}})
 			p.streamOps = ops
 			p.streamPtr = unsafe.Pointer(new(byte))
 			callDone := make(chan struct{})
@@ -47,6 +52,11 @@ func TestCloseWaitsForControls(t *testing.T) {
 			<-ops.entered
 			closed := make(chan error, 1)
 			go func() { closed <- p.Close() }()
+			select {
+			case <-closing:
+			case <-time.After(time.Second):
+				t.Fatal("Close did not enter closing state")
+			}
 			select {
 			case <-ops.destroyed:
 				t.Fatal("destroyed during control call")
