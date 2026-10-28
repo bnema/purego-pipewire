@@ -35,9 +35,10 @@ type player struct {
 	// controlMu protects stream lifetime until teardown detaches owned resources.
 	controlMu sync.RWMutex
 	// closeDone and closeErr are protected by mu; only the Close owner tears down.
-	closeDone      chan struct{}
-	closeErr       error
-	closeNotifying bool
+	closeDone   chan struct{}
+	closeErr    error
+	stateQueue  []PlayerState
+	dispatching bool
 
 	// pwView reuses Go slice headers for PipeWire callback buffers. Its native
 	// references are cleared when each callback completes.
@@ -86,17 +87,40 @@ func (p *player) transition(next PlayerState) error {
 	// Perform transition
 	p.setState(next)
 
-	// Capture callback under lock
-	cb := p.callbacks.OnStateChange
-
+	p.enqueueStateLocked(next)
 	p.mu.Unlock()
 
-	// Invoke callback after releasing lock to avoid deadlock on reentry
-	if cb != nil {
-		cb(next)
-	}
-
 	return nil
+}
+
+// enqueueStateLocked preserves transition order under mu. The transient dispatcher
+// exits when drained; enqueue and exit share mu to avoid lost wakeups.
+func (p *player) enqueueStateLocked(state PlayerState) {
+	if p.callbacks.OnStateChange == nil {
+		return
+	}
+	p.stateQueue = append(p.stateQueue, state)
+	if !p.dispatching {
+		p.dispatching = true
+		go p.dispatchStates()
+	}
+}
+
+func (p *player) dispatchStates() {
+	for {
+		p.mu.Lock()
+		if len(p.stateQueue) == 0 {
+			p.stateQueue = nil
+			p.dispatching = false
+			p.mu.Unlock()
+			return
+		}
+		state := p.stateQueue[0]
+		p.stateQueue = p.stateQueue[1:]
+		cb := p.callbacks.OnStateChange
+		p.mu.Unlock()
+		cb(state)
+	}
 }
 
 // isValidTransition checks if a state transition is valid
@@ -274,9 +298,7 @@ func (p *player) Stop() error {
 	return p.transition(PlayerStateStopped)
 }
 
-// Close permanently shuts down the player. Calls during the synchronous Closing
-// notification return nil immediately, allowing notification callbacks to reenter.
-// Other concurrent calls wait for teardown completion.
+// Close waits for resource teardown, not asynchronous state callback delivery.
 func (p *player) Close() error {
 	p.mu.Lock()
 	current := p.State()
@@ -286,10 +308,6 @@ func (p *player) Close() error {
 		return err
 	}
 	if done := p.closeDone; done != nil {
-		if p.closeNotifying {
-			p.mu.Unlock()
-			return nil
-		}
 		p.mu.Unlock()
 		<-done
 		p.mu.Lock()
@@ -303,16 +321,10 @@ func (p *player) Close() error {
 	}
 	p.closeDone = make(chan struct{})
 	p.setState(PlayerStateClosing)
-	cb := p.callbacks.OnStateChange
-	notifyClosing := cb != nil && current != PlayerStateClosing
-	p.closeNotifying = notifyClosing
-	p.mu.Unlock()
-	if notifyClosing {
-		cb(PlayerStateClosing)
-		p.mu.Lock()
-		p.closeNotifying = false
-		p.mu.Unlock()
+	if current != PlayerStateClosing {
+		p.enqueueStateLocked(PlayerStateClosing)
 	}
+	p.mu.Unlock()
 
 	// No lifetime writer lock is held across loop-dependent native operations.
 	p.teardown()
@@ -320,11 +332,8 @@ func (p *player) Close() error {
 	p.setState(PlayerStateClosed)
 	p.closeErr = nil
 	close(p.closeDone)
+	p.enqueueStateLocked(PlayerStateClosed)
 	p.mu.Unlock()
-	// Publish completion before notification so Closed callbacks can reenter Close.
-	if cb != nil {
-		cb(PlayerStateClosed)
-	}
 	return nil
 }
 
@@ -535,8 +544,7 @@ func (p *Player) Stop() error {
 	return p.p.Stop()
 }
 
-// Close permanently shuts down the player. Calls during the synchronous Closing
-// notification return nil immediately; other concurrent calls wait for teardown.
+// Close waits for resource teardown, not asynchronous state callback delivery.
 func (p *Player) Close() error {
 	if p.p == nil {
 		return nil

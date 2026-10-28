@@ -48,6 +48,11 @@ type PlayerConfig struct {
 
 // PlayerCallbacks holds callbacks for player events
 type PlayerCallbacks struct {
+	// State callbacks run asynchronously on a library goroutine, serially per player
+	// and in transition order. They may call any Player method, including Close.
+	// Close returns after resources are released; the Closed notification may be
+	// delivered after Close returns. A blocked callback delays later notifications
+	// but never teardown.
 	OnStateChange func(PlayerState)
 	Fill          func(*PCMBuffer) (int, error)
 	OnUnderrun    func(int)

@@ -210,6 +210,7 @@ func TestConcurrentCloseWaitsForOwner(t *testing.T) {
 			t.Errorf("waiter: %v", err)
 		}
 		<-firstDone
+		synctest.Wait()
 		if p.State() != PlayerStateClosed || closedNotifications.Load() != 1 {
 			t.Error("expected one Closed notification")
 		}
@@ -240,6 +241,7 @@ func TestCloseReentrantNotifications(t *testing.T) {
 				if err := <-nestedDone; err != nil {
 					t.Fatal(err)
 				}
+				synctest.Wait()
 				if len(notifications) != 2 || notifications[0] != PlayerStateClosing || notifications[1] != PlayerStateClosed {
 					t.Fatalf("notifications: %v", notifications)
 				}
@@ -249,4 +251,70 @@ func TestCloseReentrantNotifications(t *testing.T) {
 			})
 		})
 	}
+}
+
+func TestBlockedClosingNotificationDoesNotCompleteClose(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		ops := outmocks.NewMockStreamOps(t)
+		callbackEntered, callbackRelease, disconnected, releaseTeardown := make(chan struct{}), make(chan struct{}), make(chan struct{}), make(chan struct{})
+		var callbackOnce, teardownOnce sync.Once
+		unblockCallback := func() { callbackOnce.Do(func() { close(callbackRelease) }) }
+		unblockTeardown := func() { teardownOnce.Do(func() { close(releaseTeardown) }) }
+		states := make(chan PlayerState, 2)
+		p := newPlayer(PlayerConfig{}, PlayerCallbacks{OnStateChange: func(s PlayerState) {
+			states <- s
+			if s == PlayerStateClosing {
+				close(callbackEntered)
+				<-callbackRelease
+			}
+		}})
+		ptr := unsafe.Pointer(new(byte))
+		p.streamOps = ops
+		p.streamPtr = ptr
+		ops.EXPECT().DisconnectStream(ptr).RunAndReturn(func(unsafe.Pointer) error { close(disconnected); <-releaseTeardown; return nil }).Once()
+		ops.EXPECT().DestroyStream(ptr).Once()
+		first, second := make(chan error, 1), make(chan error, 1)
+		firstDone, secondDone := make(chan struct{}), make(chan struct{})
+		go func() { defer close(firstDone); first <- p.Close() }()
+		<-callbackEntered
+		<-disconnected
+		go func() { defer close(secondDone); second <- p.Close() }()
+		t.Cleanup(func() { unblockCallback(); unblockTeardown(); <-firstDone; <-secondDone })
+		synctest.Wait()
+		select {
+		case err := <-second:
+			t.Fatalf("premature unrelated Close: %v", err)
+		default:
+		}
+		unblockTeardown()
+		if err := <-first; err != nil {
+			t.Fatal(err)
+		}
+		if err := <-second; err != nil {
+			t.Fatal(err)
+		}
+		// Resource completion is independent of the still-blocked callback.
+		if p.State() != PlayerStateClosed {
+			t.Fatal("teardown not completed")
+		}
+		if state := <-states; state != PlayerStateClosing {
+			t.Fatal(state)
+		}
+		select {
+		case state := <-states:
+			t.Fatalf("notification overtook Closing: %v", state)
+		default:
+		}
+		unblockCallback()
+		if state := <-states; state != PlayerStateClosed {
+			t.Fatal(state)
+		}
+		synctest.Wait()
+		p.mu.Lock()
+		dispatching := p.dispatching
+		p.mu.Unlock()
+		if dispatching {
+			t.Fatal("dispatcher did not exit")
+		}
+	})
 }

@@ -78,14 +78,25 @@ type PCMBuffer struct {
 
 // PlayerCallbacks contains all callback functions for player events.
 type PlayerCallbacks struct {
-	Fill          func(*PCMBuffer) (int, error)
-	OnUnderrun    func(int)
-	OnDrain       func()
-	OnError       func(error)
+	Fill       func(*PCMBuffer) (int, error)
+	OnUnderrun func(int)
+	OnDrain    func()
+	OnError    func(error)
+	// State callbacks run asynchronously on a library goroutine, serially per player
+	// and in transition order. They may call any Player method, including Close.
+	// Close returns after resources are released; the Closed notification may be
+	// delivered after Close returns. A blocked callback delays later notifications
+	// but never teardown.
 	OnStateChange func(PlayerState)
 }
 
 // Player is the public interface for audio playback.
+//
+// State callbacks run asynchronously on a library goroutine, serially per player
+// and in transition order. They may call any Player method, including Close.
+// Close returns after resources are released; the Closed notification may be
+// delivered after Close returns. A blocked callback delays later notifications
+// but never teardown.
 type Player interface {
 	Start() error
 	Pause() error
