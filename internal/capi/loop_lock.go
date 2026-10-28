@@ -1,6 +1,7 @@
 package capi
 
 import (
+	"runtime"
 	"unsafe"
 
 	"github.com/bnema/purego"
@@ -24,17 +25,21 @@ func registerLoopLock(handle uintptr) {
 
 var withLoopLock = defaultWithLoopLock
 
-func defaultWithLoopLock(loop unsafe.Pointer, fn func() int32) int32 {
+func defaultWithLoopLock(loop unsafe.Pointer, fn func() int32) (ret int32) {
 	if loop == nil || pw_loop_lock == nil || pw_loop_unlock == nil {
 		return -1
 	}
-	if ret := pw_loop_lock(loop); ret < 0 {
+	// PipeWire's recursive pthread mutex must be unlocked by its owning thread.
+	runtime.LockOSThread()
+	defer runtime.UnlockOSThread()
+	if ret = pw_loop_lock(loop); ret < 0 {
 		return ret
 	}
-	ret := fn()
-	unlockRet := pw_loop_unlock(loop)
-	if ret >= 0 && unlockRet < 0 {
-		return unlockRet
-	}
-	return ret
+	defer func() {
+		unlockRet := pw_loop_unlock(loop)
+		if ret >= 0 && unlockRet < 0 {
+			ret = unlockRet
+		}
+	}()
+	return fn()
 }
