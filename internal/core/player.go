@@ -34,6 +34,9 @@ type player struct {
 	mu        sync.Mutex
 	// controlMu protects stream lifetime until teardown detaches owned resources.
 	controlMu sync.RWMutex
+	// closeDone and closeErr are protected by mu; only the Close owner tears down.
+	closeDone chan struct{}
+	closeErr  error
 
 	// pwView reuses Go slice headers for PipeWire callback buffers. Its native
 	// references are cleared when each callback completes.
@@ -272,25 +275,40 @@ func (p *player) Stop() error {
 
 // Close permanently shuts down the player
 func (p *player) Close() error {
+	p.mu.Lock()
+	if done := p.closeDone; done != nil {
+		p.mu.Unlock()
+		<-done
+		p.mu.Lock()
+		err := p.closeErr
+		p.mu.Unlock()
+		return err
+	}
 	current := p.State()
-
-	// Idempotent on already closed
 	if current == PlayerStateClosed {
+		p.mu.Unlock()
 		return nil
 	}
-
-	// Transition to Closing if not already there
-	if current != PlayerStateClosing {
-		if err := p.transition(PlayerStateClosing); err != nil {
-			return err
-		}
+	if current != PlayerStateClosing && !isValidTransition(current, PlayerStateClosing) {
+		p.mu.Unlock()
+		return ErrInvalidPlayerState
+	}
+	p.closeDone = make(chan struct{})
+	p.setState(PlayerStateClosing)
+	cb := p.callbacks.OnStateChange
+	p.mu.Unlock()
+	if cb != nil && current != PlayerStateClosing {
+		cb(PlayerStateClosing)
 	}
 
-	// Teardown the player-owned stream and main-loop resources.
+	// No lifetime writer lock is held across loop-dependent native operations.
 	p.teardown()
-
-	// Transition to Closed
-	return p.transition(PlayerStateClosed)
+	err := p.transition(PlayerStateClosed)
+	p.mu.Lock()
+	p.closeErr = err
+	close(p.closeDone)
+	p.mu.Unlock()
+	return err
 }
 
 // ensureRuntime ensures the player has a usable StreamOps implementation.
