@@ -32,7 +32,7 @@ type player struct {
 	state     atomic.Int32
 	paused    atomic.Bool
 	mu        sync.Mutex
-	// controlMu keeps streams alive throughout control calls; teardown takes the writer lock.
+	// controlMu protects stream lifetime until teardown detaches owned resources.
 	controlMu sync.RWMutex
 
 	// pwView reuses Go slice headers for PipeWire callback buffers. Its native
@@ -299,7 +299,10 @@ func (p *player) Close() error {
 // instance is retrieved, and the shared process-level init guard is used
 // before obtaining the default StreamOps implementation.
 func (p *player) ensureRuntime() error {
-	if p.streamOps != nil {
+	p.mu.Lock()
+	ready := p.streamOps != nil
+	p.mu.Unlock()
+	if ready {
 		return nil
 	}
 	if err := registerPipeWire(); err != nil {
@@ -316,7 +319,11 @@ func (p *player) ensureRuntime() error {
 	if ops == nil {
 		return errors.New("failed to obtain default stream operations")
 	}
-	p.streamOps = ops
+	p.mu.Lock()
+	if p.streamOps == nil {
+		p.streamOps = ops
+	}
+	p.mu.Unlock()
 	return nil
 }
 
@@ -346,14 +353,29 @@ func (p *player) deactivateStream() error {
 	return streamOps.SetStreamActive(streamPtr, false)
 }
 
+// acquireControl never blocks a loop callback behind teardown. Recheck state
+// after acquisition to cover Close racing with the initial state read.
+func (p *player) acquireControl() bool {
+	if p.State() == PlayerStateClosing || p.State() == PlayerStateClosed {
+		return false
+	}
+	if !p.controlMu.TryRLock() {
+		return false
+	}
+	if p.State() == PlayerStateClosing || p.State() == PlayerStateClosed {
+		p.controlMu.RUnlock()
+		return false
+	}
+	return true
+}
+
 // SetControl sets one or more SPA control values on the stream.
 // No-op when no values are given or the stream is nil.
 func (p *player) SetControl(values ...spa.PropValue) error {
-	p.controlMu.RLock()
-	defer p.controlMu.RUnlock()
-	if p.State() == PlayerStateClosing || p.State() == PlayerStateClosed {
+	if !p.acquireControl() {
 		return ErrPlayerClosed
 	}
+	defer p.controlMu.RUnlock()
 	if len(values) == 0 {
 		return nil
 	}
@@ -372,11 +394,10 @@ func (p *player) SetControl(values ...spa.PropValue) error {
 
 // GetControl reads a control's current value. Returns an error when closed, without an active stream, or for an unknown control.
 func (p *player) GetControl(id spa.Prop) (*spa.ControlInfo, error) {
-	p.controlMu.RLock()
-	defer p.controlMu.RUnlock()
-	if p.State() == PlayerStateClosing || p.State() == PlayerStateClosed {
+	if !p.acquireControl() {
 		return nil, ErrPlayerClosed
 	}
+	defer p.controlMu.RUnlock()
 	p.mu.Lock()
 	streamOps := p.streamOps
 	streamPtr := atomic.LoadPointer((*unsafe.Pointer)(unsafe.Pointer(&p.streamPtr)))
@@ -397,7 +418,6 @@ func (p *player) GetControl(id spa.Prop) (*spa.ControlInfo, error) {
 // main loop is still active.
 func (p *player) teardown() {
 	p.controlMu.Lock()
-	defer p.controlMu.Unlock()
 	p.mu.Lock()
 	streamOps := p.streamOps
 	streamPtr := atomic.LoadPointer((*unsafe.Pointer)(unsafe.Pointer(&p.streamPtr)))
@@ -407,6 +427,7 @@ func (p *player) teardown() {
 	p.loopPtr = nil
 	p.loopDone = nil
 	p.mu.Unlock()
+	p.controlMu.Unlock()
 
 	if streamOps == nil {
 		return
