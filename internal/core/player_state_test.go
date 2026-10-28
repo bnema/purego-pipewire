@@ -132,3 +132,25 @@ func TestStateCallbackTransitionOrder(t *testing.T) {
 		}
 	})
 }
+
+func TestStateDispatcherRestartsAfterDrain(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		states := make(chan PlayerState, 1)
+		p := newPlayer(playerConfig{}, playerCallbacks{OnStateChange: func(s PlayerState) { states <- s }})
+		for _, want := range []PlayerState{PlayerStateStarting, PlayerStatePlaying, PlayerStateStopped} {
+			if err := p.transition(want); err != nil {
+				t.Fatal(err)
+			}
+			if got := <-states; got != want {
+				t.Fatalf("got %v want %v", got, want)
+			}
+			synctest.Wait()
+			p.mu.Lock()
+			dispatching, queued := p.dispatching, len(p.stateQueue)
+			p.mu.Unlock()
+			if dispatching || queued != 0 {
+				t.Fatalf("dispatcher not drained: running=%v queued=%d", dispatching, queued)
+			}
+		}
+	})
+}

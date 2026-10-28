@@ -84,6 +84,9 @@ func TestProcessCallbackSteadyStateAllocs(t *testing.T) {
 	}
 	p := newCallbackPlayer(ops, func(buf *PCMBuffer) (int, error) { return buf.Frames, nil })
 
+	// Configure notification delivery without involving it in real-time processing.
+	p.callbacks.OnStateChange = func(PlayerState) {}
+
 	p.onProcess() // Allocate reusable headers before measuring steady state.
 	allocs := testing.AllocsPerRun(1000, p.onProcess)
 	if allocs != 0 {
