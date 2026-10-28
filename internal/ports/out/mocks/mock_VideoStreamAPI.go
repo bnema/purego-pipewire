@@ -1355,13 +1355,10 @@ func (_c *MockVideoStreamAPI_PWStreamSetActive_Call) RunAndReturn(run func(strea
 
 // PWStreamSetControl provides a mock function for the type MockVideoStreamAPI
 func (_mock *MockVideoStreamAPI) PWStreamSetControl(stream unsafe.Pointer, id uint32, n_values uint32, values *float32, rest ...any) int32 {
-	var tmpRet mock.Arguments
-	if len(rest) > 0 {
-		tmpRet = _mock.Called(stream, id, n_values, values, rest)
-	} else {
-		tmpRet = _mock.Called(stream, id, n_values, values)
-	}
-	ret := tmpRet
+	var _ca []any
+	_ca = append(_ca, stream, id, n_values, values)
+	_ca = append(_ca, rest...)
+	ret := _mock.Called(_ca...)
 
 	if len(ret) == 0 {
 		panic("no return value specified for PWStreamSetControl")
@@ -1411,9 +1408,11 @@ func (_c *MockVideoStreamAPI_PWStreamSetControl_Call) Run(run func(stream unsafe
 			arg3 = args[3].(*float32)
 		}
 		var arg4 []any
-		var variadicArgs []any
-		if len(args) > 4 {
-			variadicArgs = args[4].([]any)
+		variadicArgs := make([]any, len(args)-4)
+		for i, a := range args[4:] {
+			if a != nil {
+				variadicArgs[i] = a.(any)
+			}
 		}
 		arg4 = variadicArgs
 		run(

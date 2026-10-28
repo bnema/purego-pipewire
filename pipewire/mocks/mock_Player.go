@@ -91,7 +91,7 @@ func (_c *MockPlayer_Close_Call) RunAndReturn(run func() error) *MockPlayer_Clos
 }
 
 // GetControl provides a mock function for the type MockPlayer
-func (_mock *MockPlayer) GetControl(id spa.Prop) *spa.ControlInfo {
+func (_mock *MockPlayer) GetControl(id spa.Prop) (*spa.ControlInfo, error) {
 	ret := _mock.Called(id)
 
 	if len(ret) == 0 {
@@ -99,6 +99,10 @@ func (_mock *MockPlayer) GetControl(id spa.Prop) *spa.ControlInfo {
 	}
 
 	var r0 *spa.ControlInfo
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(spa.Prop) (*spa.ControlInfo, error)); ok {
+		return returnFunc(id)
+	}
 	if returnFunc, ok := ret.Get(0).(func(spa.Prop) *spa.ControlInfo); ok {
 		r0 = returnFunc(id)
 	} else {
@@ -106,7 +110,12 @@ func (_mock *MockPlayer) GetControl(id spa.Prop) *spa.ControlInfo {
 			r0 = ret.Get(0).(*spa.ControlInfo)
 		}
 	}
-	return r0
+	if returnFunc, ok := ret.Get(1).(func(spa.Prop) error); ok {
+		r1 = returnFunc(id)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
 }
 
 // MockPlayer_GetControl_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetControl'
@@ -133,12 +142,12 @@ func (_c *MockPlayer_GetControl_Call) Run(run func(id spa.Prop)) *MockPlayer_Get
 	return _c
 }
 
-func (_c *MockPlayer_GetControl_Call) Return(controlInfo *spa.ControlInfo) *MockPlayer_GetControl_Call {
-	_c.Call.Return(controlInfo)
+func (_c *MockPlayer_GetControl_Call) Return(controlInfo *spa.ControlInfo, err error) *MockPlayer_GetControl_Call {
+	_c.Call.Return(controlInfo, err)
 	return _c
 }
 
-func (_c *MockPlayer_GetControl_Call) RunAndReturn(run func(id spa.Prop) *spa.ControlInfo) *MockPlayer_GetControl_Call {
+func (_c *MockPlayer_GetControl_Call) RunAndReturn(run func(id spa.Prop) (*spa.ControlInfo, error)) *MockPlayer_GetControl_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -189,13 +198,14 @@ func (_c *MockPlayer_Pause_Call) RunAndReturn(run func() error) *MockPlayer_Paus
 
 // SetControl provides a mock function for the type MockPlayer
 func (_mock *MockPlayer) SetControl(values ...spa.PropValue) error {
-	var tmpRet mock.Arguments
-	if len(values) > 0 {
-		tmpRet = _mock.Called(values)
-	} else {
-		tmpRet = _mock.Called()
+	// spa.PropValue
+	_va := make([]any, len(values))
+	for _i := range values {
+		_va[_i] = values[_i]
 	}
-	ret := tmpRet
+	var _ca []any
+	_ca = append(_ca, _va...)
+	ret := _mock.Called(_ca...)
 
 	if len(ret) == 0 {
 		panic("no return value specified for SetControl")
@@ -225,9 +235,11 @@ func (_e *MockPlayer_Expecter) SetControl(values ...any) *MockPlayer_SetControl_
 func (_c *MockPlayer_SetControl_Call) Run(run func(values ...spa.PropValue)) *MockPlayer_SetControl_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 []spa.PropValue
-		var variadicArgs []spa.PropValue
-		if len(args) > 0 {
-			variadicArgs = args[0].([]spa.PropValue)
+		variadicArgs := make([]spa.PropValue, len(args)-0)
+		for i, a := range args[0:] {
+			if a != nil {
+				variadicArgs[i] = a.(spa.PropValue)
+			}
 		}
 		arg0 = variadicArgs
 		run(

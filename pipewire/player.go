@@ -92,8 +92,10 @@ type Player interface {
 	Stop() error
 	Close() error
 	State() PlayerState
+	// SetControl sets at most four float-valued controls in one native call.
 	SetControl(values ...spa.PropValue) error
-	GetControl(id spa.Prop) *spa.ControlInfo
+	// GetControl returns a copied control, or an error if unavailable or closed.
+	GetControl(id spa.Prop) (*spa.ControlInfo, error)
 }
 
 // ErrInvalidPlayerConfig is returned when the player configuration is invalid.
@@ -149,9 +151,9 @@ func (p *playerImpl) SetControl(values ...spa.PropValue) error {
 	return p.internal.SetControl(values...)
 }
 
-func (p *playerImpl) GetControl(id spa.Prop) *spa.ControlInfo {
+func (p *playerImpl) GetControl(id spa.Prop) (*spa.ControlInfo, error) {
 	if p.internal == nil {
-		return nil
+		return nil, core.ErrPlayerClosed
 	}
 	return p.internal.GetControl(id)
 }

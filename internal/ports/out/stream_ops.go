@@ -33,9 +33,8 @@ type StreamOps interface {
 	// SetStreamControl sets one or more control values on the stream.
 	SetStreamControl(streamPtr unsafe.Pointer, controls ...spa.PropValue) error
 
-	// GetStreamControl reads a control's current value. Returns nil if
-	// the stream doesn't expose a control with that id.
-	GetStreamControl(streamPtr unsafe.Pointer, id spa.Prop) *spa.ControlInfo
+	// GetStreamControl copies a control's current value or returns an error.
+	GetStreamControl(streamPtr unsafe.Pointer, id spa.Prop) (*spa.ControlInfo, error)
 
 	// DequeueBuffer dequeues a buffer from the stream for writing.
 	// Returns nil if no buffer is available.

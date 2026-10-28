@@ -1,5 +1,7 @@
 all: false
 template: testify
+template-data:
+  unroll-variadic: true
 formatter: goimports
 dir: "{{.InterfaceDir}}/mocks"
 pkgname: mocks

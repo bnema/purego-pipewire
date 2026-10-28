@@ -413,7 +413,7 @@ func (_c *MockStreamOps_DisconnectStream_Call) RunAndReturn(run func(streamPtr u
 }
 
 // GetStreamControl provides a mock function for the type MockStreamOps
-func (_mock *MockStreamOps) GetStreamControl(streamPtr unsafe.Pointer, id spa.Prop) *spa.ControlInfo {
+func (_mock *MockStreamOps) GetStreamControl(streamPtr unsafe.Pointer, id spa.Prop) (*spa.ControlInfo, error) {
 	ret := _mock.Called(streamPtr, id)
 
 	if len(ret) == 0 {
@@ -421,6 +421,10 @@ func (_mock *MockStreamOps) GetStreamControl(streamPtr unsafe.Pointer, id spa.Pr
 	}
 
 	var r0 *spa.ControlInfo
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(unsafe.Pointer, spa.Prop) (*spa.ControlInfo, error)); ok {
+		return returnFunc(streamPtr, id)
+	}
 	if returnFunc, ok := ret.Get(0).(func(unsafe.Pointer, spa.Prop) *spa.ControlInfo); ok {
 		r0 = returnFunc(streamPtr, id)
 	} else {
@@ -428,7 +432,12 @@ func (_mock *MockStreamOps) GetStreamControl(streamPtr unsafe.Pointer, id spa.Pr
 			r0 = ret.Get(0).(*spa.ControlInfo)
 		}
 	}
-	return r0
+	if returnFunc, ok := ret.Get(1).(func(unsafe.Pointer, spa.Prop) error); ok {
+		r1 = returnFunc(streamPtr, id)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
 }
 
 // MockStreamOps_GetStreamControl_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetStreamControl'
@@ -461,12 +470,12 @@ func (_c *MockStreamOps_GetStreamControl_Call) Run(run func(streamPtr unsafe.Poi
 	return _c
 }
 
-func (_c *MockStreamOps_GetStreamControl_Call) Return(controlInfo *spa.ControlInfo) *MockStreamOps_GetStreamControl_Call {
-	_c.Call.Return(controlInfo)
+func (_c *MockStreamOps_GetStreamControl_Call) Return(controlInfo *spa.ControlInfo, err error) *MockStreamOps_GetStreamControl_Call {
+	_c.Call.Return(controlInfo, err)
 	return _c
 }
 
-func (_c *MockStreamOps_GetStreamControl_Call) RunAndReturn(run func(streamPtr unsafe.Pointer, id spa.Prop) *spa.ControlInfo) *MockStreamOps_GetStreamControl_Call {
+func (_c *MockStreamOps_GetStreamControl_Call) RunAndReturn(run func(streamPtr unsafe.Pointer, id spa.Prop) (*spa.ControlInfo, error)) *MockStreamOps_GetStreamControl_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -678,13 +687,15 @@ func (_c *MockStreamOps_SetStreamActive_Call) RunAndReturn(run func(streamPtr un
 
 // SetStreamControl provides a mock function for the type MockStreamOps
 func (_mock *MockStreamOps) SetStreamControl(streamPtr unsafe.Pointer, controls ...spa.PropValue) error {
-	var tmpRet mock.Arguments
-	if len(controls) > 0 {
-		tmpRet = _mock.Called(streamPtr, controls)
-	} else {
-		tmpRet = _mock.Called(streamPtr)
+	// spa.PropValue
+	_va := make([]any, len(controls))
+	for _i := range controls {
+		_va[_i] = controls[_i]
 	}
-	ret := tmpRet
+	var _ca []any
+	_ca = append(_ca, streamPtr)
+	_ca = append(_ca, _va...)
+	ret := _mock.Called(_ca...)
 
 	if len(ret) == 0 {
 		panic("no return value specified for SetStreamControl")
@@ -719,9 +730,11 @@ func (_c *MockStreamOps_SetStreamControl_Call) Run(run func(streamPtr unsafe.Poi
 			arg0 = args[0].(unsafe.Pointer)
 		}
 		var arg1 []spa.PropValue
-		var variadicArgs []spa.PropValue
-		if len(args) > 1 {
-			variadicArgs = args[1].([]spa.PropValue)
+		variadicArgs := make([]spa.PropValue, len(args)-1)
+		for i, a := range args[1:] {
+			if a != nil {
+				variadicArgs[i] = a.(spa.PropValue)
+			}
 		}
 		arg1 = variadicArgs
 		run(

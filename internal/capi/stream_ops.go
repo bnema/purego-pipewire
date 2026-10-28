@@ -160,11 +160,18 @@ func (s *streamOpsImpl) SetStreamActive(streamPtr unsafe.Pointer, active bool) e
 	return nil
 }
 
+// SetStreamControl accepts at most four controls (purego has 15 native argument slots).
 func (s *streamOpsImpl) SetStreamControl(streamPtr unsafe.Pointer, controls ...spa.PropValue) error {
+	if len(controls) > 4 {
+		return fmt.Errorf("pw_stream_set_control: at most 4 controls are supported")
+	}
 	if len(controls) == 0 {
 		return fmt.Errorf("pw_stream_set_control: at least one control is required")
 	}
 	for _, c := range controls {
+		if c.ID == 0x1000E || (c.ID >= 0x10012 && c.ID <= 0x10015) {
+			return fmt.Errorf("pw_stream_set_control: integer control %#x is unsupported", c.ID)
+		}
 		if len(c.Values) == 0 {
 			return fmt.Errorf("pw_stream_set_control: values must not be empty")
 		}
@@ -198,26 +205,34 @@ type pwStreamControl struct {
 	maxValues uint32
 }
 
-// GetStreamControl reads a control's current value. Returns nil if the
-// stream doesn't expose a control with that id, mirroring pw_stream_get_control
-// itself returning NULL.
-func (s *streamOpsImpl) GetStreamControl(streamPtr unsafe.Pointer, id spa.Prop) *spa.ControlInfo {
-	ptr := pw_stream_get_control(streamPtr, uint32(id))
-	if ptr == nil {
-		return nil
-	}
+// GetStreamControl copies a control under the owning loop lock.
+// An unknown control returns an error.
+func (s *streamOpsImpl) GetStreamControl(streamPtr unsafe.Pointer, id spa.Prop) (*spa.ControlInfo, error) {
+	var info *spa.ControlInfo
+	var err error
+	ret := s.callStreamWithLoopLock(streamPtr, func() int32 {
+		ptr := pw_stream_get_control(streamPtr, uint32(id))
+		if ptr == nil {
+			err = fmt.Errorf("pw_stream_get_control: unknown control %#x", id)
+			return 0
+		}
 
-	c := (*pwStreamControl)(ptr)
-	info := &spa.ControlInfo{
-		Name: GoString(uintptr(unsafe.Pointer(c.name))),
-		Def:  c.def,
-		Min:  c.min,
-		Max:  c.max,
+		c := (*pwStreamControl)(ptr)
+		info = &spa.ControlInfo{
+			Name: GoString(uintptr(unsafe.Pointer(c.name))),
+			Def:  c.def,
+			Min:  c.min,
+			Max:  c.max,
+		}
+		if c.nValues > 0 && c.values != nil {
+			info.Values = append([]float32(nil), unsafe.Slice(c.values, int(c.nValues))...)
+		}
+		return 0
+	})
+	if ret < 0 {
+		return nil, &PWError{Func: "pw_stream_get_control", Code: ret}
 	}
-	if c.nValues > 0 && c.values != nil {
-		info.Values = append([]float32(nil), unsafe.Slice(c.values, int(c.nValues))...)
-	}
-	return info
+	return info, err
 }
 
 // GoString copies a char* to a Go string.
@@ -229,10 +244,7 @@ func GoString(c uintptr) string {
 		return ""
 	}
 	var length int
-	for {
-		if *(*byte)(unsafe.Add(ptr, uintptr(length))) == '\x00' {
-			break
-		}
+	for *(*byte)(unsafe.Add(ptr, uintptr(length))) != '\x00' {
 		length++
 	}
 	return string(unsafe.Slice((*byte)(ptr), length))

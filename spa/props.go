@@ -4,7 +4,7 @@ package spa
 // Value helper to determine the values.
 type Prop uint32
 
-// FloatProp is a Prop whose SPA type is Float, Int, Double, or Long.
+// FloatProp is a Prop whose SPA type is Float.
 type FloatProp Prop
 
 func (p FloatProp) Value(v float32) PropValue {
@@ -72,12 +72,6 @@ const (
 	PropVolumeBase FloatProp = 0x10009 // SPA_PROP_volumeBase: volume base
 	PropVolumeStep FloatProp = 0x1000A // SPA_PROP_volumeStep: volume step
 
-	PropLatencyOffsetNsec FloatProp = 0x1000E // SPA_PROP_latencyOffsetNsec: delay adjustment in nanoseconds (Long)
-
-	PropVolumeRampSamples     FloatProp = 0x10012 // SPA_PROP_volumeRampSamples: samples to ramp the volume over (Int)
-	PropVolumeRampStepSamples FloatProp = 0x10013 // SPA_PROP_volumeRampStepSamples: incremental samples per volume ramp step (Int)
-	PropVolumeRampTime        FloatProp = 0x10014 // SPA_PROP_volumeRampTime: time in milliseconds to ramp the volume over (Int)
-	PropVolumeRampStepTime    FloatProp = 0x10015 // SPA_PROP_volumeRampStepTime: incremental time in nanoseconds per volume ramp step (Long)
 )
 
 const (
