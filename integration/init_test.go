@@ -5,7 +5,7 @@ package integration
 import (
 	"testing"
 
-	"github.com/bnema/purego-pipewire/pipewire"
+	"bnema.dev/purego-pipewire/pipewire"
 )
 
 func TestInitSmoke(t *testing.T) {

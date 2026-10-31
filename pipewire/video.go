@@ -1,8 +1,8 @@
 package pipewire
 
 import (
-	"github.com/bnema/purego-pipewire/internal/core"
-	"github.com/bnema/purego-pipewire/spa"
+	"bnema.dev/purego-pipewire/internal/core"
+	"bnema.dev/purego-pipewire/spa"
 )
 
 // VideoFormat is a SPA raw video format (BGRx=8, BGRA=12).

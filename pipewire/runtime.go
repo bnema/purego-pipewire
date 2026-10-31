@@ -4,8 +4,8 @@ import (
 	"errors"
 	"unsafe"
 
-	"github.com/bnema/purego-pipewire/internal/capi"
-	"github.com/bnema/purego-pipewire/internal/core"
+	"bnema.dev/purego-pipewire/internal/capi"
+	"bnema.dev/purego-pipewire/internal/core"
 )
 
 // runtimeWrapper wraps the internal core.Runtime to implement the public Runtime interface.

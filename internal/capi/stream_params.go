@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"unsafe"
 
-	portout "github.com/bnema/purego-pipewire/internal/ports/out"
+	portout "bnema.dev/purego-pipewire/internal/ports/out"
 )
 
 // SPA POD type identifiers (from spa/utils/type.h).

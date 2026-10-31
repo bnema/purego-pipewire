@@ -3,7 +3,7 @@ package capi
 import (
 	"unsafe"
 
-	"github.com/bnema/purego"
+	"bnema.dev/purego"
 )
 
 // The generated bindings call C through purego.RegisterLibFunc, whose

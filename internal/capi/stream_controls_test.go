@@ -1,7 +1,7 @@
 package capi
 
 import (
-	"github.com/bnema/purego-pipewire/spa"
+	"bnema.dev/purego-pipewire/spa"
 	"testing"
 	"unsafe"
 )

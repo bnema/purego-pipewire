@@ -7,9 +7,9 @@ import (
 	"sync/atomic"
 	"unsafe"
 
-	"github.com/bnema/purego-pipewire/internal/capi"
-	portout "github.com/bnema/purego-pipewire/internal/ports/out"
-	"github.com/bnema/purego-pipewire/spa"
+	"bnema.dev/purego-pipewire/internal/capi"
+	portout "bnema.dev/purego-pipewire/internal/ports/out"
+	"bnema.dev/purego-pipewire/spa"
 )
 
 var (

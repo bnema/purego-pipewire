@@ -5,8 +5,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/bnema/purego-pipewire/cmd/pipewiregen/internal/model"
-	"github.com/bnema/purego-pipewire/cmd/pipewiregen/internal/parser"
+	"bnema.dev/purego-pipewire/cmd/pipewiregen/internal/model"
+	"bnema.dev/purego-pipewire/cmd/pipewiregen/internal/parser"
 )
 
 func testModel() *model.Model {

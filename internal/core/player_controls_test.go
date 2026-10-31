@@ -8,9 +8,9 @@ import (
 	"testing/synctest"
 	"unsafe"
 
-	portout "github.com/bnema/purego-pipewire/internal/ports/out"
-	outmocks "github.com/bnema/purego-pipewire/internal/ports/out/mocks"
-	"github.com/bnema/purego-pipewire/spa"
+	portout "bnema.dev/purego-pipewire/internal/ports/out"
+	outmocks "bnema.dev/purego-pipewire/internal/ports/out/mocks"
+	"bnema.dev/purego-pipewire/spa"
 )
 
 func TestCloseWaitsForControls(t *testing.T) {

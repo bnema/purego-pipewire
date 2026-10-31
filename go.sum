@@ -1,5 +1,5 @@
-github.com/bnema/purego v0.13.0-bnema.1 h1:fKRdztnvTmRqAjANMoN+utEIH73dvPqVPJh2iZCCAO8=
-github.com/bnema/purego v0.13.0-bnema.1/go.mod h1:xS1iX3noypxnbOUEUAqOvkfnUzgHuu19VtL4+dfUMJM=
+bnema.dev/purego v0.13.0-bnema.3 h1:15iXEOkg0WrpUKoLnoD/94qX4gPc+F4T6hTbpUWg81s=
+bnema.dev/purego v0.13.0-bnema.3/go.mod h1:isZX4JISlvO21uwYXw3coKTo8RhwMpLpdro6jLIp++s=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=

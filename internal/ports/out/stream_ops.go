@@ -3,7 +3,7 @@ package out
 import (
 	"unsafe"
 
-	"github.com/bnema/purego-pipewire/spa"
+	"bnema.dev/purego-pipewire/spa"
 )
 
 // PlaybackFormat describes the audio format used when connecting a playback

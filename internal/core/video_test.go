@@ -8,9 +8,9 @@ import (
 
 	"github.com/stretchr/testify/mock"
 
-	portinmocks "github.com/bnema/purego-pipewire/internal/ports/in/mocks"
-	portmocks "github.com/bnema/purego-pipewire/internal/ports/out/mocks"
-	"github.com/bnema/purego-pipewire/spa"
+	portinmocks "bnema.dev/purego-pipewire/internal/ports/in/mocks"
+	portmocks "bnema.dev/purego-pipewire/internal/ports/out/mocks"
+	"bnema.dev/purego-pipewire/spa"
 )
 
 func TestVideoStructLayouts(t *testing.T) {

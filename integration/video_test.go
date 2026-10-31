@@ -13,9 +13,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bnema/purego-pipewire/internal/ports/in/mocks"
-	"github.com/bnema/purego-pipewire/pipewire"
-	"github.com/bnema/purego-pipewire/spa"
+	"bnema.dev/purego-pipewire/internal/ports/in/mocks"
+	"bnema.dev/purego-pipewire/pipewire"
+	"bnema.dev/purego-pipewire/spa"
 	"github.com/stretchr/testify/mock"
 )
 

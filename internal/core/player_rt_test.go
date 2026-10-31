@@ -6,8 +6,8 @@ import (
 	"testing"
 	"unsafe"
 
-	portout "github.com/bnema/purego-pipewire/internal/ports/out"
-	"github.com/bnema/purego-pipewire/internal/ports/out/mocks"
+	portout "bnema.dev/purego-pipewire/internal/ports/out"
+	"bnema.dev/purego-pipewire/internal/ports/out/mocks"
 	"github.com/stretchr/testify/mock"
 )
 

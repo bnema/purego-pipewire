@@ -4,7 +4,7 @@ import (
 	"errors"
 	"unsafe"
 
-	portout "github.com/bnema/purego-pipewire/internal/ports/out"
+	portout "bnema.dev/purego-pipewire/internal/ports/out"
 )
 
 var ErrMainLoopCreate = errors.New("failed to create main loop")

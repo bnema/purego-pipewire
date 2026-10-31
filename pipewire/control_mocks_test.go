@@ -1,9 +1,9 @@
 package pipewire_test
 
 import (
-	outmocks "github.com/bnema/purego-pipewire/internal/ports/out/mocks"
-	playermocks "github.com/bnema/purego-pipewire/pipewire/mocks"
-	"github.com/bnema/purego-pipewire/spa"
+	outmocks "bnema.dev/purego-pipewire/internal/ports/out/mocks"
+	playermocks "bnema.dev/purego-pipewire/pipewire/mocks"
+	"bnema.dev/purego-pipewire/spa"
 	"testing"
 	"unsafe"
 )

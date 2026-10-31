@@ -11,11 +11,11 @@ import (
 	"time"
 	"unsafe"
 
-	"github.com/bnema/purego"
+	"bnema.dev/purego"
 
-	portin "github.com/bnema/purego-pipewire/internal/ports/in"
-	portout "github.com/bnema/purego-pipewire/internal/ports/out"
-	"github.com/bnema/purego-pipewire/spa"
+	portin "bnema.dev/purego-pipewire/internal/ports/in"
+	portout "bnema.dev/purego-pipewire/internal/ports/out"
+	"bnema.dev/purego-pipewire/spa"
 )
 
 // Video source limits. They are fixed so that nothing is allocated after

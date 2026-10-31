@@ -5,7 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/bnema/purego"
+	"bnema.dev/purego"
 )
 
 type Handles struct {

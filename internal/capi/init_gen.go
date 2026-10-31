@@ -2,7 +2,7 @@
 
 package capi
 
-import "github.com/bnema/purego"
+import "bnema.dev/purego"
 
 
 // pw_initFunc is the function type for pw_init.

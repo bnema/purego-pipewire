@@ -9,7 +9,7 @@ filename: "mock_{{.InterfaceName}}.go"
 structname: "Mock{{.InterfaceName}}"
 
 packages:
-  github.com/bnema/purego-pipewire/internal/ports/out:
+  bnema.dev/purego-pipewire/internal/ports/out:
     config:
       all: false
       include-auto-generated: true
@@ -21,7 +21,7 @@ packages:
       VideoAPI:
       SharedMemAPI:
       VideoStreamAPI:
-  github.com/bnema/purego-pipewire/pipewire:
+  bnema.dev/purego-pipewire/pipewire:
     config:
       all: false
       include-auto-generated: true
@@ -29,7 +29,7 @@ packages:
       Runtime:
       MainLoop:
       Player:
-  github.com/bnema/purego-pipewire/internal/ports/in:
+  bnema.dev/purego-pipewire/internal/ports/in:
     config:
       all: false
     interfaces:

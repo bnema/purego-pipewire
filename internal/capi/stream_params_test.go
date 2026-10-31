@@ -6,7 +6,7 @@ import (
 	"testing"
 	"unsafe"
 
-	portout "github.com/bnema/purego-pipewire/internal/ports/out"
+	portout "bnema.dev/purego-pipewire/internal/ports/out"
 )
 
 // TestBuildRawAudioParamsProducesOneConnectParam verifies that buildRawAudioParams

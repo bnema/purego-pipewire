@@ -1,6 +1,6 @@
 package capi
 
-import "github.com/bnema/purego-pipewire/internal/loader"
+import "bnema.dev/purego-pipewire/internal/loader"
 
 // registerAll registers all PipeWire symbol bindings.
 // This is the central registration point; add new module registrations here.

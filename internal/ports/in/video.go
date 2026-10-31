@@ -1,6 +1,6 @@
 package in
 
-import "github.com/bnema/purego-pipewire/spa"
+import "bnema.dev/purego-pipewire/spa"
 
 // VideoHandler receives video source stream events. All methods are called on
 // the thread that drives the PipeWire loop (the goroutine that calls

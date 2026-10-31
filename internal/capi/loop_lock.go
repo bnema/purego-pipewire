@@ -4,7 +4,7 @@ import (
 	"runtime"
 	"unsafe"
 
-	"github.com/bnema/purego"
+	"bnema.dev/purego"
 )
 
 // pw_loop_lock/pw_loop_unlock are kept as handwritten internal bindings

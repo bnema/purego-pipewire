@@ -7,10 +7,10 @@ import (
 	"sync"
 	"unsafe"
 
-	"github.com/bnema/purego"
+	"bnema.dev/purego"
 
-	portout "github.com/bnema/purego-pipewire/internal/ports/out"
-	"github.com/bnema/purego-pipewire/spa"
+	portout "bnema.dev/purego-pipewire/internal/ports/out"
+	"bnema.dev/purego-pipewire/spa"
 )
 
 // PWError represents a PipeWire C API error with the function name and return code.

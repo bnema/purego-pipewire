@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/bnema/purego-pipewire/cmd/pipewiregen/internal/model"
+	"bnema.dev/purego-pipewire/cmd/pipewiregen/internal/model"
 )
 
 // Load reads and parses a binding model JSON file.

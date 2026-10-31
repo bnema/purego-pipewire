@@ -5,8 +5,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/bnema/purego-pipewire/cmd/pipewiregen/internal/emitter"
-	"github.com/bnema/purego-pipewire/cmd/pipewiregen/internal/parser"
+	"bnema.dev/purego-pipewire/cmd/pipewiregen/internal/emitter"
+	"bnema.dev/purego-pipewire/cmd/pipewiregen/internal/parser"
 )
 
 func main() {

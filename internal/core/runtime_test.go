@@ -3,7 +3,7 @@ package core
 import (
 	"testing"
 
-	portmocks "github.com/bnema/purego-pipewire/internal/ports/out/mocks"
+	portmocks "bnema.dev/purego-pipewire/internal/ports/out/mocks"
 )
 
 func TestRuntimeInitRejectsDifferentCAPIAfterProcessWideInit(t *testing.T) {

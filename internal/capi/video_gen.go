@@ -2,7 +2,7 @@
 
 package capi
 
-import "github.com/bnema/purego"
+import "bnema.dev/purego"
 
 import "unsafe"
 

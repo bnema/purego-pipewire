@@ -3,8 +3,8 @@ package capi
 import (
 	"sync"
 
-	"github.com/bnema/purego-pipewire/internal/loader"
-	portout "github.com/bnema/purego-pipewire/internal/ports/out"
+	"bnema.dev/purego-pipewire/internal/loader"
+	portout "bnema.dev/purego-pipewire/internal/ports/out"
 )
 
 // Compile-time check: defaultCAPI satisfies portout.CAPI.

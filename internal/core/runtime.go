@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"sync"
 
-	portout "github.com/bnema/purego-pipewire/internal/ports/out"
+	portout "bnema.dev/purego-pipewire/internal/ports/out"
 )
 
 type Runtime struct {

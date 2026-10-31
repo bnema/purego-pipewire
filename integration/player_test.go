@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bnema/purego-pipewire/pipewire"
+	"bnema.dev/purego-pipewire/pipewire"
 )
 
 // TestPlayerStartStopClose verifies the player lifecycle against a real PipeWire
